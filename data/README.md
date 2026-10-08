@@ -1,18 +1,36 @@
-# Scalar observations
+# Scalar Lorenz-63 observations
 
-The supplied arrays are the exact observations used by the archived K1500 experiment. Both are one-dimensional NumPy float64 arrays. Training uses adjacent pairs `(x[:-1], x[1:])`.
+The arrays contain the $x$ coordinate of the Lorenz-63 system
 
-| File | Points | Adjacent pairs |
+$$
+\dot x=10(y-x),\qquad
+\dot y=x(28-z)-y,\qquad
+\dot z=xy-\frac83z.
+$$
+
+Both files are one-dimensional NumPy float64 arrays sampled at $\Delta t=0.01$. Training and transition diagnostics use adjacent pairs `(x[:-1], x[1:])`.
+
+| File | Observations | Adjacent pairs |
 | --- | ---: | ---: |
-| train_x.npy | 2,000,000 | 1,999,999 |
-| validation_x.npy | 100,000 | 99,999 |
+| `train_x.npy` | 2,000,000 | 1,999,999 |
+| `validation_x.npy` | 100,000 | 99,999 |
 
-The underlying system is the classical Lorenz-63 ODE with sigma=10, rho=28 and beta=8/3. Only its x coordinate is observed by the generator.
+## Training trajectory
 
-The training trajectory starts at (2,3,4), uses DOP853 with rtol=1e-13, atol=1e-15, max_step=0.01 and integration segments of length 100. Observations are sampled every 0.01 time units. After discarding 100,000 observations, indices 100,000 through 2,099,999 are retained, corresponding to times 1000 through 20999.99.
+The initial condition is $(x,y,z)=(2,3,4)$. Integration uses DOP853 with relative tolerance $10^{-13}$, absolute tolerance $10^{-15}$, maximum step $0.01$ and integration segments of length 100 time units.
 
-The validation array was inherited from a separate trajectory starting at (1,1,1), sampled every 0.01 time units using DOP853 with rtol=1e-12, atol=1e-14, max_step=0.01 and integration segments of length 100. This historical trajectory first discards 100,000 observations (1,000 time units), then reserves 800,000 observations for its historical training split. Validation is the following 100,000 observations: original grid indices 900,000 through 999,999, or times 9000.00 through 9999.99. The supplied validation array therefore already excludes the burn-in; do not discard its first 100,000 points again.
+After discarding 100,000 sampled observations, grid indices 100,000 through 2,099,999 are retained. These correspond to times 1000.00 through 20999.99. The supplied file contains only the retained observations.
 
-The present two-million-point training file comes from the separate (2,3,4) trajectory described above; it does not use that historical 800,000-point training split. Different initial conditions do not establish statistical independence. No test set is included or used. Data-source records are listed in [result_sources.json](../docs/result_sources.json).
+## Validation trajectory
 
-Use the supplied files for reproducing this exact experiment. Freshly integrating a chaotic ODE with a different solver version or segmentation can change the observation array. The generator does not reconstruct the full three-dimensional Lorenz state, and the scalar observation process is not assumed to be exactly Markov.
+The separate validation source starts at $(1,1,1)$ and uses DOP853 with relative tolerance $10^{-12}$, absolute tolerance $10^{-14}$, maximum step $0.01$ and integration segments of length 100 time units.
+
+That source sequence discards 100,000 observations, then assigns the next 800,000 to its original training partition. The following 100,000 observations form the supplied validation array: original grid indices 900,000 through 999,999, corresponding to times 9000.00 through 9999.99. Burn-in is already excluded.
+
+The present 2,000,000-point training array comes from the $(2,3,4)$ trajectory, separately from the 800,000-point partition described above. The validation sequence was monitored during the recorded training experiment; it is not an untouched test set. No test set is included or used by the supplied scripts.
+
+## Interpretation and numerical reproducibility
+
+Different initial conditions do not establish statistical independence, and observations within each trajectory are serially dependent. The generator observes only $x$; it does not reconstruct the full three-dimensional Lorenz state. The scalar observation process is not assumed to be exactly Markov. Matching scalar marginals or adjacent-pair statistics therefore does not guarantee agreement of multistep dynamics.
+
+The supplied arrays define the numerical data reference. Changes in solver version or integration segmentation can change a freshly integrated chaotic trajectory. Data-source records are listed in [result_sources.json](../docs/result_sources.json).

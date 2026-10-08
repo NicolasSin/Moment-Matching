@@ -1,5 +1,5 @@
 {
-  "scope": "K1500, Adam1000, GH4000 only; original research files are unchanged.",
+  "scope": "Lorenz-63 scalar conditional modeling with 1500 features per coordinate; model after 1000 Adam and 4000 L-BFGS updates; temporal-correlation diagnostics through 24000 L-BFGS updates.",
   "copied_files": [
     {
       "source": "洛伦兹/GH24000_validation_20261007/data/train_x.npy",
@@ -29,16 +29,6 @@
     {
       "source": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/conditional_metrics.csv",
       "file": "results/conditional_metrics.csv",
-      "operation": "byte-for-byte copy"
-    },
-    {
-      "source": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/joint_residual_preview.png",
-      "file": "results/figures/joint_residual_preview.png",
-      "operation": "byte-for-byte copy"
-    },
-    {
-      "source": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/conditional_bins_preview.png",
-      "file": "results/figures/conditional_bins_preview.png",
       "operation": "byte-for-byte copy"
     }
   ],
@@ -84,5 +74,29 @@
     "frequency_variance": "1 / gamma**2",
     "numpy_frequency_scale": "1 / gamma",
     "feature_coordinates": "Original state units; standardization occurs only inside the network"
+  },
+  "derived_results": {
+    "results/figures/autocorrelation.csv": {
+      "observations": "data/train_x.npy",
+      "trajectories": "results/rollout_samples.npy",
+      "implementation": "scripts/plot_results.py:autocorrelation"
+    },
+    "results/checkpoint_scan/autocorrelations.npz": {
+      "source": "洛伦兹/GH24000_checkpoint_scan_20261008/tables/autocorrelations.npz",
+      "retained_points_per_chain": 2000000,
+      "chains_per_checkpoint": 3,
+      "sampling_interval": 0.01,
+      "finite_checkpoints": 19,
+      "excluded_update_counts": [
+        9000,
+        11000
+      ],
+      "implementation": "scripts/plot_results.py:autocorrelation"
+    },
+    "results/figures/joint_residual_preview.png": {
+      "source": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/visualization_data.json",
+      "implementation": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/code/analyze_joint.py:preview",
+      "operation": "Render saved validation histograms; model labels specify L-BFGS update count"
+    }
   }
 }

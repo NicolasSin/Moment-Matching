@@ -1,72 +1,49 @@
-# Verification of the simplified version
+# Numerical consistency and reproducibility
 
-Prepared on 8 October 2026. The original research files were not edited.
+The checks below establish numerical consistency within the stated settings and tested ranges. Source records for the supplied checkpoint, observations and numerical results are in [result_sources.json](result_sources.json).
 
-## Preserved artifacts
+## Bounded training comparisons
 
-The selected checkpoint, training and validation observations, the three retained rollout arrays, and the separate two-million-state rollout were copied byte for byte. Their source paths are recorded in `result_sources.json`.
+The current implementation was compared against the reference implementation on CPU and on the NVIDIA GeForce RTX 5070 Ti Laptop GPU. Each backend's paired comparisons had exact tensor equality and maximum absolute difference **0**; this does not assert equality between CPU and CUDA trajectories.
 
-The original checkpoint contains historical optimizer state and metadata, including an unused original machine path. The portable scripts read its saved model tensors; they do not depend on those historical metadata fields. The checkpoint remains unchanged.
+The comparisons covered:
 
-## Numerical code comparisons
+- All eight initialized parameter/buffer tensors and forward predictions in float32 and float64.
+- The complete $K=1500$ frequency and phase arrays for both coordinate feature banks.
+- Monte Carlo loss and gradients with 23 features, 43 input states and seven latent samples per input.
+- Three consecutive Adam updates using a 32-state fixture, followed by three L-BFGS updates using 12 input states and 12-point Gauss–Hermite quadrature.
+- Model tensors, optimizer state and random-generator state through the short optimization sequence.
+- Loading the supplied checkpoint, inference from it and checkpoint save/load round trips.
 
-The original and simplified code passed 84 bounded CUDA comparisons with exact equality and maximum absolute difference zero. These covered initialization, feature draws, forward evaluation, Monte Carlo loss and gradients in float32 and float64, one Adam update and its random states, GH loss and gradients, one L-BFGS update, and inference from the archived GH4000 checkpoint.
+The separate empirical-input quadrature check reconstructed all **586 nodes and weights** from the complete training input array with exact equality to the reference calculation. Numerical-library thread limits were four.
 
-The bounded fixtures used 23 features, 32 Monte Carlo input states with seven noise draws each, and a 12-state/12-node GH calculation. Separately, all 586 input quadrature nodes and weights reconstructed from the complete training input array matched the archive exactly. Matching the original numerical-library thread limits was necessary for this last comparison.
+A short end-to-end CPU execution of the current training entry point used the first 97 training observations, 23 features, seven latent samples, 12-point Gauss–Hermite quadrature and three updates in each stage. It produced a completed summary and a finite final model that loaded successfully. These bounded checks do not constitute a new full training run.
 
-## Full evaluation of the saved checkpoint
+## Archived full evaluation
 
-The simplified evaluator completed all three 1,100,000-step CPU trajectories in approximately 117 seconds. The entire generated arrays and the retained three-by-1,000,000 arrays were exactly equal to the original outputs. Maximum absolute difference: **0**.
+The recorded full evaluation of the supplied checkpoint generated all three 1,100,000-step CPU trajectories. Both the complete arrays and the three retained 1,000,000-state arrays matched the archived outputs exactly: maximum absolute difference **0**.
 
-All per-seed rollout metrics and their reported averages matched after retaining the original one-thread numerical-library setting. This setting was applied after the full trajectory run and checked by recomputing metrics from the completed arrays; the trajectories were not rerun solely for that setting.
+Per-seed rollout metrics and their averages matched with the reference one-thread numerical-library setting. The metrics were also checked by recomputation from the completed arrays.
 
-The full validation histogram counts and edges matched. Archived validation predictions were also compared at three batches and matched exactly. Validation W1 differed by at most **2.43e-17**, because the original validation calculation used two BLAS threads while the compact evaluator uses one. No additional dependency or process machinery was added solely to reproduce those last reduction bits.
+All observed-input validation histogram edges and counts matched exactly. Predictions compared at three archived batches also matched exactly. Validation Wasserstein-1 differences were at most **$2.43\times10^{-17}$**; the reference validation calculation used two BLAS threads and the evaluator uses one.
 
-## Complete retraining
+The 100,000 supplied validation observations matched the source array exactly. Their burn-in and retained-index conventions are specified in the [data description](../data/README.md).
 
-The first simplified script completed all 1000 Adam and 4000 GH updates in 87.99 minutes on the original CUDA environment. All 8 saved parameter/buffer tensors are exactly equal to the selected historical checkpoint, with maximum absolute difference **0**. The terminal training loss is `1.0812081201689768e-08`.
+## Autocorrelation and figures
 
-This is a complete from-initialization reproduction in the tested environment, not merely a comparison of the supplied checkpoint. The newly saved checkpoint has different metadata and serialization, so whole-file identity is not required; tensor identity is the relevant check.
+The FFT autocorrelation implementation was compared with direct summation using the same per-trajectory mean and lag-adjusted normalization:
 
-## Subsequent cleanup on 8 October 2026
+| Comparison | Tested lags | Maximum absolute difference |
+| --- | --- | ---: |
+| Seven-point numerical fixture | Every lag, 0–6 | $2.23\times10^{-16}$ |
+| Full training reference and three retained model trajectories | 0, 1, 10, 100, 1,000, 10,000 | $1.56\times10^{-15}$ |
 
-The current version removes file/model fingerprint calculations, checks and
-metadata fields, and fixes the model interface to standardized inputs. It also
-spells out NumPy's frequency standard-deviation argument without changing the
-sampled frequencies. The supplied checkpoint and numerical arrays are unchanged.
+The reported bounds round the measured maxima upward. The full-array check used the 2,000,000-point reference and all three 1,000,000-point model trajectories. Each trajectory was processed separately.
 
-Separate CPU and CUDA comparisons against the first simplified version passed
-with exact equality and maximum absolute difference **0**. They covered all eight
-initial parameter/buffer tensors in float32 and float64, forward predictions,
-all 1,500 frequencies/phases per coordinate, bounded Monte Carlo losses and
-gradients, loading the original checkpoint, and checkpoint save/load round trips.
-Three consecutive Adam updates followed by three GH/L-BFGS updates also matched
-all model tensors, optimizer state and random streams. The bounded loss fixtures
-used 23 features and seven noise samples per input; the GH fixture used 12 input
-states and a 12-node Gaussian rule. The empirical-input quadrature source was
-unchanged.
+PNG and PDF figures were generated from the saved numerical results and visually inspected. The joint plots preserve the recorded bin edges and counts; autocorrelation zooms identify the actual sampled lags.
 
-These comparisons ran on CPU and the original NVIDIA GeForce RTX 5070 Ti Laptop
-GPU with four numerical-library threads in the original Python/NumPy/SciPy/PyTorch
-environment. The checks live outside the shared training package. This cleanup
-was not followed by another full 1000-Adam/4000-GH retrain; the full-retraining
-record above applies to the first simplified version.
+## Scope and environment
 
-The current training entry point also completed a short end-to-end CPU run using
-the first 97 supplied training observations, 23 features, seven noise samples,
-12 Gaussian nodes and three updates in each stage. It wrote a final model and
-completion summary, loaded successfully, and produced no stdout or stderr.
+The training comparisons used Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1 and PyTorch 2.13.0+cu130, with four numerical-library threads. Autonomous evaluation used CPU float64 and one numerical-library/PyTorch compute thread.
 
-The validation array was compared directly to the original historical validation
-array: all 100,000 values were equal, maximum absolute difference **0**. Its
-generation record gives a 100,000-point burn-in and validation grid indices
-900,000 through 999,999. Details are in [the data notes](../data/README.md).
-
-The current training entry point and its five core modules have 702 physical
-lines, down from 758 in the first simplified version.
-
-## Scope
-
-The first cleanup reduced the training entry point and its local numerical dependencies from 1,733 to 758 physical lines, including comments and blank lines. This comparison covers the original `train.py`, `common.py`, `model.py`, `objective.py`, `gh_objective.py`, `empirical_quadrature.py`, `validation_monitor.py` and `plot_progress.py`, versus the first simplified training entry point and its five core modules. It excludes data-generation, preparation, launching and evaluation scripts. Diagnostic/recovery functionality was removed, so this is not a claim of unchanged functionality in fewer lines.
-
-PNG and PDF figures were redrawn from the saved numerical results and visually inspected. The plots keep the original loss records and joint-bin counts. These checks establish the stated implementation and archive consistency, not exact equality of population distributions or reproducibility on every hardware/software combination.
+Exact equality applies to the stated numerical comparisons in the tested environment. These checks do not establish equality of population distributions, statistical independence, exact scalar Markov dynamics or reproducibility on every hardware/software combination.

@@ -1,111 +1,90 @@
-# Training the K=1500, GH4000 example
+# Training protocol
 
-The supplied trained model is the original saved GH4000 checkpoint. Reusing it
-does not require training. This script provides a readable version of the
-optimization that produced that checkpoint: 1,000 Adam updates followed by
-4,000 accepted L-BFGS updates. Here **GH4000 means 4,000 optimization updates**;
-the Gaussian quadrature used by those updates has **128 nodes**.
+The scalar conditional generator uses $K=1500$ random Fourier features per coordinate. The supplied model, `models/k1500_gh4000.pt`, corresponds to 1,000 Adam updates followed by 4,000 accepted L-BFGS updates.
 
-## Run
+## Model and moment objective
 
-Install the dependencies described in the README, then run from the repository
-directory:
+For scalar observations $x_n$ at intervals $\Delta t=0.01$, the model is
+
+$$
+\widehat X_{n+1}=G_\theta((\widehat X_n-m_x)/s_x,\varepsilon_n),
+\qquad \varepsilon_n\overset{\mathrm{iid}}{\sim}\mathcal N(0,1).
+$$
+
+Here $G_\theta$ is the network; its implementation accepts the unstandardized state and performs the transformation internally. The network has dimensions $2\to96\to96\to1$, GELU hidden activations and a linear output in original $x$ units, with no residual connection. Only the state input is standardized. Layer weights are initialized uniformly on intervals with half-widths $0.5$, $0.2$ and $1.0$; all bias intervals have half-width $0.05$.
+
+The source normalization values are $m_x=-0.06194128671694436$ and $s_x=7.924799010967371$. Model buffers are initially rounded to float32, then promoted with the network to float64 for L-BFGS. Checkpoint loading preserves those working values.
+
+The coordinate feature banks are independent:
+
+$$
+\phi_i(x)=\cos(w_i x+b_i),\qquad
+\psi_j(y)=\cos(v_j y+c_j),\qquad
+w_i,v_j\sim\mathcal N(0,\gamma^{-2}),\quad b_i,c_j\sim U[0,2\pi).
+$$
+
+Features are evaluated in original coordinates. The fixed bandwidth $\gamma=0.9954746006464024$ is the median absolute distance over distinct-index pairs of standardized training inputs; this numerical value is used directly in the original-coordinate features. Frequency standard deviation is $1/\gamma$.
+
+With $N=1{,}999{,}999$ adjacent pairs, the empirical target and noise-integrated model moment are
+
+$$
+T_{ij}=\frac1N\sum_{n=0}^{N-1}\phi_i(x_n)\psi_j(x_{n+1}),\qquad
+M_{ij}(\theta)=\frac1N\sum_{n=0}^{N-1}\phi_i(x_n)
+\mathbb E_\varepsilon[\psi_j(G_\theta((x_n-m_x)/s_x,\varepsilon))].
+$$
+
+The numerical model moment $\widehat M$ is estimated by Monte Carlo or quadrature, as specified below. The loss includes all $K^2$ entries:
+
+$$
+L(\theta)=\frac1{K^2}\|\widehat M(\theta)-T\|_F^2.
+$$
+
+The target uses every adjacent pair. The two-pass gradient calculation replays the same samples or quadrature nodes. A finite Monte Carlo squared loss is not an unbiased estimator of the squared, exactly integrated moment discrepancy.
+
+## Optimization settings
+
+| Setting | Adam | L-BFGS |
+| --- | --- | --- |
+| Updates | 1,000 | 4,000 accepted |
+| Model and feature precision | float32 | float64 |
+| Moment accumulation and loss | float64 | float64 |
+| Input integration | 100,000 states drawn without replacement per update | 586 positive empirical-input quadrature nodes |
+| Latent integration | 50 independent Gaussian draws per input | 128-point Gauss–Hermite quadrature |
+| Input chunk size | 512 | 64 |
+
+Adam uses a cosine learning-rate schedule from $10^{-3}$ to $10^{-5}$, $\beta=(0.9,0.999)$, $\epsilon=10^{-12}$, zero weight decay and gradient-norm clipping at 10. Data-target chunks contain 4,096 pairs.
+
+The empirical-input quadrature is constructed from all $N$ input states, with bin width $s_x/40$ and at most three local nodes per occupied bin. Its weights sum to one. The latent rule in `code/gh_objective.py` integrates the standard normal distribution; its weights also sum to one.
+
+L-BFGS uses learning rate 1, `max_iter=1`, `max_eval=25`, history size 100, zero gradient/change tolerances and a strong-Wolfe line search. A factor of $10^6$ scales only the optimizer's loss and gradient; recorded scientific losses are unscaled. Updates require finite loss, nonzero parameter movement and loss no greater than the preceding value plus $10^{-18}$. At most three optimizer-history restarts are allowed.
+
+| Random stream | Seed |
+| --- | ---: |
+| Network initialization | 3888361926 |
+| Input-coordinate features | 3149125487 |
+| Output-coordinate features | 1524931226 |
+| Adam input sampling | 2513425825 |
+| Adam latent noise | 1447829901 |
+
+## Execution
+
+From the repository root, after installing the dependencies:
 
 ```console
 python scripts/train.py --output outputs/retrain_01 --device cuda
 ```
 
-The script automatically reads `configs/experiment.json` and
-`data/train_x.npy`. It stays quiet while training. Choose a new output directory:
-existing directories and destinations inside packaged code, data, models, or
-results are refused. On success it writes only:
+Defaults are `configs/experiment.json` and `data/train_x.npy`. The output directory must be new. Successful completion writes `model_final.pt` and `summary.json`. An interrupted run after initialization writes `model_partial.pt` and an incomplete summary. The default cooperative time limit is eight hours.
 
-- `model_final.pt`: the last model, after the fixed update counts.
-- `summary.json`: completed update counts, final training loss, and elapsed time.
+The entry point uses the fixed update counts above and reads no validation or test observations. The supplied loss history includes validation monitoring from the recorded experiment; that monitored sequence is not an untouched test set.
 
-If interrupted after model initialization, it saves `model_partial.pt` and an
-incomplete summary. That partial model is not the GH4000 result. The simplified
-script deliberately has no resume mechanism, validation selection, live plots,
-progress messages, or intermediate checkpoint collection.
+## Numerical environment
 
-For the original CUDA 13.0 PyTorch build on a compatible Windows/Linux machine,
-install PyTorch before the remaining pinned dependencies:
+The reference environment is Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1 and PyTorch 2.13.0+cu130 on an NVIDIA GeForce RTX 5070 Ti Laptop GPU. Training sets numerical-library thread limits to four before importing the libraries and disables TF32.
 
-```console
-python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
-python -m pip install -r requirements.txt
-```
+GPU training requires a CUDA-enabled PyTorch installation compatible with the
+hardware. `requirements.txt` fixes the PyTorch version but does not specify the
+CUDA wheel source. The recorded installation uses the CUDA 13.0 build; supported
+installation options are listed in the [PyTorch installation instructions](https://pytorch.org/get-started/locally/).
 
-This follows the [official PyTorch versioned installation instructions](https://pytorch.org/get-started/previous-versions/).
-For CPU-only evaluation or another supported CUDA build, use the
-[official installation selector](https://pytorch.org/get-started/locally/).
-
-The default configuration has an eight-hour cooperative time limit. A numerical
-operation already in progress may finish after the limit before the next check.
-The script raises an error if the limit is reached before completion.
-
-## What is preserved
-
-The network is the original scalar conditional generator: two inputs, hidden
-layers of width 96 with GELU activations, and one unrestricted output. Only the
-state input is always standardized; there is no input-mode switch. Gaussian noise
-has unit variance; random Fourier features are evaluated on original state coordinates.
-
-The Gaussian frequencies have variance `gamma**-2`. NumPy's `normal` accepts a
-standard deviation, so the code uses `scale=1/gamma`. The fixed value
-`gamma=0.9954746006464024` was obtained as the median absolute pair distance of
-the standardized training inputs, then used directly in the original-coordinate
-features, following the historical experiment. See the README for this convention.
-
-The supplied configuration retains the original initialization, independent
-random seeds, 1,500 cosine features per coordinate, and full adjacent-pair data
-targets. Adam draws 100,000 training inputs without replacement and 50 Gaussian
-noise values per input on each update. Its float32 network calculations,
-float64 moment accumulation, cosine learning-rate schedule, gradient clipping,
-and two-pass gradient calculation are unchanged.
-
-L-BFGS uses float64, the same strong-Wolfe line search and optimizer settings,
-and the same positive empirical-input quadrature constructed from all
-1,999,999 training input states. It uses 586 input nodes for the supplied data,
-bin width equal to the archived float64 training standard deviation divided by
-40, and a 128-node Gaussian rule. The reported scientific loss is the mean of
-the squared entries of the full 1,500-by-1,500 moment discrepancy matrix; the
-optimizer-only scale of one million does not change that reported loss.
-
-Normalization buffers are initially rounded to float32 and later promoted to
-float64 with the network. Replacing them with freshly computed float64
-statistics would change the model. The loader preserves the archived values.
-
-## What was removed
-
-The historical run included diagnostic validation, adaptive diagnostic
-quadrature, recovery machinery, file-access guards, preflight receipts, and
-repeated plots and checkpoints. These are absent here. Its records show that
-through GH4000 the **training** rule stayed at Gaussian order 128 and input
-refinement level zero. Changes to the diagnostic rule did not change training
-parameters or L-BFGS history. Validation noise used a separate unused random
-stream. No validation or test observations are read by this training script.
-
-`objective.py`, `gh_objective.py`, and the network/checkpoint implementation
-retain the original numerical operations. `empirical_quadrature.py` removes
-per-bin diagnostic bookkeeping while retaining the same arithmetic. The entry
-point sets the six numerical-library thread limits to four before importing
-those libraries, as the original launcher did; this matters even for the final
-bits of the input quadrature.
-
-## Resources and reproducibility
-
-The original environment was Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1, and
-PyTorch 2.13.0+cu130 on an NVIDIA GeForce RTX 5070 Ti Laptop GPU. The archived
-update timings total approximately 33 minutes for Adam and 27 minutes for the
-first 4,000 GH updates, excluding target construction and diagnostics. This is
-a substantial training run, not a quick demonstration. Memory use is dominated
-by feature evaluations and the full moment matrices, not the small network.
-
-`--device cpu` is supported for portability but is much slower. CPU and CUDA
-random-number streams differ, so a CPU retrain does not reproduce the archived
-optimization trajectory. GPU model, library versions, precision settings, and
-numerical-library thread counts can also affect exact reproducibility. The
-supplied archived checkpoint is the reference for the shared results.
-
-The first simplified implementation passed both the local numerical comparisons and a complete fresh 1000-Adam/4000-GH retrain in the original CUDA environment. Its final saved model tensors are exactly equal to the historical GH4000 checkpoint. The subsequent removal of file fingerprints and the input-mode switch has a separate comparison record. See [verification details](VERIFICATION.md) for the tested range and remaining portability limits.
+`--device cpu` is supported, but CPU and CUDA random streams differ. Hardware, library versions, precision and reduction order can affect the optimization trajectory. The supplied checkpoint and arrays define the recorded results; the tested numerical scope is described in [Numerical consistency and reproducibility](VERIFICATION.md).

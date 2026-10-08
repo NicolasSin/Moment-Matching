@@ -1,9 +1,9 @@
-# Autocorrelation supplement: GH4000–GH24000
+# Temporal-correlation sensitivity to optimization duration
 
-These curves add a temporal diagnostic to the original K1500 checkpoint scan.
-All 21 checkpoints, from 4,000 to 24,000 accepted L-BFGS updates at intervals of
-1,000, were evaluated previously. The 19 checkpoints with three finite complete
-rollouts are shown here. GH9000 and GH11000 produced nonfinite trajectories and
+This study compares temporal correlations across checkpoints of the K=1500 model.
+The evaluation covers 21 checkpoints, from 4,000 to 24,000 L-BFGS updates
+at intervals of 1,000, following the same 1,000-update Adam stage. The 19 checkpoints with three finite complete
+rollouts are shown here. The checkpoints at 9,000 and 11,000 updates produced nonfinite trajectories and
 are excluded entirely, including their remaining finite chains.
 
 ![Reference and three checkpoint comparisons](autocorrelation_checkpoints.png)
@@ -19,17 +19,23 @@ two points; straight connecting lines only guide the eye.
 one lag does not extend to longer lags. The following model values average
 the three independently calculated ACF curves:
 
-| Time lag | Steps | Training reference | GH4000 | GH23000 | GH24000 |
+| Time lag | Lag steps | Training reference | 4,000 L-BFGS updates | 23,000 L-BFGS updates | 24,000 L-BFGS updates |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 0.01 | 1 | 0.998538 | 0.998533 | 0.998543 | 0.998544 |
 | 0.1 | 10 | 0.868545 | 0.985683 | 0.985805 | 0.985808 |
 | 1 | 100 | 0.124786 | 0.884514 | 0.884612 | 0.884676 |
 | 10 | 1000 | -0.000243 | 0.468897 | 0.484469 | 0.485624 |
 
-GH23000 was selected by the predeclared equal-weight sum of marginal-W1 and
-adjacent-joint-JS ranks. ACF is a later diagnostic and does not alter that
+The 23,000-update checkpoint minimizes the predeclared equal-weight sum of
+marginal Wasserstein-1 and adjacent-joint Jensen–Shannon divergence ranks. ACF is a later diagnostic and does not alter that
 selection. That recommendation concerns the two distribution criteria; it
-does not mean GH23000 reproduces the temporal dynamics.
+does not imply recovery of temporal dynamics.
+
+Selection uses the arithmetic mean of the three per-chain values for each
+criterion. Joint divergence uses natural logarithms and a common 240-by-240
+interior grid with explicit underflow and overflow bins on both axes. Rank ties
+use average ranks; ties in the rank sum are resolved by the lower worst rank,
+then lower mean joint divergence, then fewer L-BFGS updates.
 
 ![All 19 finite checkpoints](autocorrelation_all_checkpoints.png)
 
@@ -53,9 +59,8 @@ does not mean GH23000 reproduces the temporal dynamics.
   population standard deviation across the three seeds, not a confidence interval.
 
 This is a finite comparison against the training reference, not an independent
-test or a proof of stationarity. The main repository's GH4000 figures use the
-separately archived three **one-million-state** chains; do not mix those curves
-with this **two-million-state-per-chain** scan.
+test or a proof of stationarity. The principal 4,000-update experiment uses three **one-million-state** chains.
+Those records are distinct from this **two-million-state-per-chain** study.
 
 ## Saved values and redrawing
 
@@ -63,7 +68,7 @@ with this **two-million-state-per-chain** scan.
 `reference_acf`, `steps`, `seeds`, `model_acf`, `selected_step`, and
 `excluded_steps`. `model_acf` has shape `(19, 3, 10001)`, ordered by the saved
 step and seed arrays. The files contain curves, not the full scan trajectories
-or additional trained models. The supplied model remains GH4000.
+or additional trained models. The model included in the repository is the 4,000-update checkpoint.
 
 From the repository root:
 
@@ -71,15 +76,15 @@ From the repository root:
 python scripts/plot_results.py
 ```
 
-This redraws the supplied GH4000 results and these supplementary checkpoint
+This redraws the principal experiment and the supplementary checkpoint
 figures into `outputs/figures/`. PNG figures are embedded above; PDF copies are
 included for export. The plotting code is in the existing
 [`scripts/plot_results.py`](../../scripts/plot_results.py).
 
 The curve archive was calculated on 2026-10-09 from the retained arrays in the
-original local `GH24000_checkpoint_scan_20261008` scan. Checkpoints belonged to
-the original GH24000 training run, not new retraining. The full local report
+original local `GH24000_checkpoint_scan_20261008` scan. All checkpoints belong to one optimization trajectory ending at 24,000
+L-BFGS updates. The full local report
 retains the source checkpoint paths and computation record. FFT results were
 independently compared with direct lag-product sums on the full reference and
-GH23000 first chain, including lag 10000; the largest observed difference was
+23,000-update first chain, including lag 10000; the largest observed difference was
 `3.0e-15`.

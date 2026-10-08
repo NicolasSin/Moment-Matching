@@ -1,4 +1,4 @@
-"""Evaluate the frozen K1500 / GH4000 model in original x units on CPU."""
+"""Evaluate the scalar conditional generator in original state units on CPU."""
 from __future__ import annotations
 
 import argparse
