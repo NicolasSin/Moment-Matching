@@ -1,6 +1,6 @@
 # Lorenz-63: scalar moment matching
 
-A compact research example learning the next scalar Lorenz observation from the current observation and Gaussian noise. This package contains **K=1500, Adam1000 + GH4000** only: readable training code, the saved model, the original data, and selected results.
+A compact research example learning the next scalar Lorenz observation from the current observation and Gaussian noise. The main experiment is **K=1500, Adam1000 + GH4000**: readable training code, the saved model, the original data, and selected results. A supplementary autocorrelation comparison covers the later checkpoints from the same K1500 training run.
 
 **GH4000 means 4,000 L-BFGS updates; the Gaussian-Hermite quadrature order is 128.**
 
@@ -13,6 +13,21 @@ The first simplified version reproduced every saved model tensor in a complete f
 ![Training and validation loss](results/figures/loss_history.png)
 
 ![Autonomous rollout marginals](results/figures/rollout_distribution.png)
+
+![Autocorrelation of the observed trajectory and GH4000 rollouts](results/figures/autocorrelation.png)
+
+Autocorrelation adds a temporal diagnostic to the distribution comparisons.
+Each saved trajectory is centered and evaluated separately, with time step 0.01;
+the three model curves are averaged without joining their endpoints. The model's
+correlations decay substantially more slowly than the observed correlations.
+Matching marginals and adjacent-pair distributions has therefore not recovered
+the observed longer-lag dynamics. See [the estimator and reproduction command](docs/EVALUATION.md).
+
+The later **GH4000–GH24000 checkpoint comparison** has a separate
+[autocorrelation supplement](results/checkpoint_scan/README.md), including all
+19 finite checkpoints and the two excluded nonfinite cases. That supplement
+does not replace the GH4000 model supplied in this package or change the
+original W1/joint-JS selection rule.
 
 | Diagnostic | Saved result |
 | --- | ---: |

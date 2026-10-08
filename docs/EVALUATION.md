@@ -12,9 +12,56 @@ python scripts/plot_results.py
 
 This reads the saved loss table, three retained rollout trajectories, and the
 2-million-point adjacent-pair histograms. It creates PNG and PDF figures for
-the K1500 / GH4000 model only. It does not train or run the model. Use
+the K1500 / GH4000 model, plus the saved checkpoint ACF supplement when present.
+It does not train or run the model. Use
 `--output PATH` to choose a figure directory. `--joint-bins 120`, `240`, or `480`
 selects one of the saved grids (default: 120).
+
+The autocorrelation figure uses the training trajectory and each of the three
+saved model trajectories separately. It shows short lags through 500 steps
+(5 time units) and long lags through 10,000 steps (100 time units), with sampling
+interval `dt = 0.01`. Set `--acf-max-lag N` to change the longest lag; short
+trajectories automatically limit it to their length minus one.
+
+`autocorrelation.png` and `autocorrelation.pdf` show the reference, three thin
+individual model curves, and their arithmetic mean. `autocorrelation.csv`
+contains lag, time lag, reference ACF, the three seed ACFs, their mean, and their
+population standard deviation. The spread across three seeds is descriptive,
+not a confidence interval.
+
+For each trajectory of length `n`, the code subtracts that trajectory's sample
+mean and computes the existing Lorenz evaluation convention:
+
+$$
+\rho(k)=\frac{n}{n-k}
+\frac{\sum_{t=0}^{n-k-1}(x_t-\bar x)(x_{t+k}-\bar x)}
+     {\sum_{t=0}^{n-1}(x_t-\bar x)^2},\qquad 0\le k<n.
+$$
+
+This is lag-adjusted normalization, not a claim of an unbiased estimator of
+the population autocorrelation. Float64 FFTs are zero-padded to prevent circular
+wrap-around. The saved `rollout_samples.npy` already excludes burn-in; no further
+states are discarded. The three chains are never concatenated, which would
+create artificial transitions between unrelated endpoints. Reference and model
+trajectories retain their respective sample lengths. This diagnostic does not
+change training, checkpoint selection, or the existing ranking.
+
+If `results/checkpoint_scan/autocorrelations.npz` is present, the same plotting
+command also redraws the original-training checkpoint supplement:
+
+- `autocorrelation_checkpoints.png` and `.pdf` compare GH4000, the selected
+  GH23000, and GH24000 with the reference. Shading is the population standard
+  deviation of three seed ACFs, not a confidence interval.
+- `autocorrelation_all_checkpoints.png` and `.pdf` show every finite checkpoint,
+  with the three individual curves, their mean, and the reference. GH9000 and
+  GH11000 are excluded because their autonomous rollouts became nonfinite;
+  no truncated-chain ACF is substituted for them.
+
+Those supplement curves use three separate trajectories of two million retained
+states per original-training checkpoint. They are distinct from the supplied
+GH4000 reproduction's three one-million-state trajectories. The supplement is a
+temporal-correlation diagnostic; it does not change the checkpoint ranking made
+from marginal and adjacent-pair distribution comparisons.
 
 The joint plots show **probability per bin**, counts divided by 1,999,999, not
 probability density. Both panels use the same bin edges and colour range.
