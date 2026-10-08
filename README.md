@@ -16,8 +16,12 @@ dependence at longer lags.
 
 ## Scientific scope
 
-The model approximates the stationary one-step conditional law
-$K_\Delta(x,\cdot)=\operatorname{Law}(X_{n+1}\mid X_n=x)$ of a scalar observation.
+The model approximates the stationary one-step conditional law of a scalar observation:
+
+```math
+K_\Delta(x,\cdot)=\mathrm{Law}(X_{n+1}\mid X_n=x).
+```
+
 Iterating the learned conditional law defines a first-order Markov surrogate,
 although the observed scalar process need not be Markov.
 
