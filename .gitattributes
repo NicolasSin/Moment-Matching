@@ -1,4 +1,4 @@
-# Preserve archived file hashes, including text line endings.
+# Preserve file contents, including text line endings.
 * -text
 *.npy binary
 *.npz binary

@@ -13,25 +13,21 @@
         "seed": 20261304,
         "initial_train_index": 95844,
         "initial_x": -14.598013133703434,
-        "requested_steps": 1100000,
-        "noise_sha256": "19aec0cb51fbddd5938c50bd5d6f1a1b120d3b113ebb6e3677fb30df052df650"
+        "requested_steps": 1100000
       },
       {
         "seed": 20261305,
         "initial_train_index": 538435,
         "initial_x": -9.732162349591096,
-        "requested_steps": 1100000,
-        "noise_sha256": "9dddb0361cd13037a6a7a95cea1426622a0f2f36da7ae187b0ae9c37c3e01b4b"
+        "requested_steps": 1100000
       },
       {
         "seed": 20261306,
         "initial_train_index": 773739,
         "initial_x": 7.61336425587853,
-        "requested_steps": 1100000,
-        "noise_sha256": "974743ab102e78990b08c8c1045a85b51daf6351310c8e0481e1c11bf5841bab"
+        "requested_steps": 1100000
       }
     ],
-    "noise_matches_original_hashes": true,
     "initial_value_in_output": false,
     "clipping": false,
     "restarts": false,
@@ -173,6 +169,5 @@
       "seed_std_population": 0.002949120998987101
     }
   },
-  "checkpoint_sha256": "c5f28b103c53a0b494126a7e46a754adc1bd1f2aba6eaf8d1c8aa5c92a07422c",
   "interpretation": "Three empirical rollout marginals; no proof of exact stationarity."
 }

@@ -1,4 +1,4 @@
-"""Float64 Gaussian quadrature for the unchanged raw-pair RFF moment loss.
+"""Float64 Gaussian quadrature for the pair RFF moment loss in original units.
 
 The model and fixed feature bank are never modified. Optional positive input
 weights integrate an empirical-input quadrature; acceptance against all original
@@ -91,7 +91,7 @@ def weighted_model_moment(model, x, z_nodes, bank, z_weights, chunk=128, x_weigh
 
 def weighted_moment_loss(model, x, z_nodes, bank, target, z_weights, chunk=128,
                          x_weights=None, backward=False, weight=1.):
-    """Raw mean(delta**2) and matrix, with exact fixed-rule replay gradients.
+    """Unscaled mean(delta**2) and matrix, with exact fixed-rule replay gradients.
 
     dL/dM = 2*delta/K**2. The second pass differentiates the identical weighted
     chunk matrices against that fixed sensitivity. Input and latent weights are

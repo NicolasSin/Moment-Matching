@@ -4,7 +4,7 @@ A compact research example learning the next scalar Lorenz observation from the 
 
 **GH4000 means 4,000 L-BFGS updates; the Gaussian-Hermite quadrature order is 128.**
 
-A complete fresh retrain of this simplified version reproduced every saved model tensor exactly in the original environment. See [verification](docs/VERIFICATION.md).
+The first simplified version reproduced every saved model tensor in a complete fresh retrain. The subsequent cleanup removes file fingerprints and the unused input-mode switch; its numerical comparisons are recorded separately in [verification](docs/VERIFICATION.md).
 
 [中文使用说明](docs/使用说明.md) · [Training](docs/TRAINING.md) · [Evaluation](docs/EVALUATION.md) · [GitHub 中文教程](docs/GITHUB_中文教程.md)
 
@@ -61,9 +61,13 @@ Training runs silently and saves its output when finished. Allow roughly 60–90
 
 ## Method
 
-The generator takes the observed scalar state x and an independent standard Gaussian z. Its MLP has widths 2→96→96→1 with GELU activations. Input x is standardized inside the model; the output is the next state in original units. There is no residual connection.
+The generator takes the observed scalar state x and an independent standard Gaussian z. Its MLP has widths 2→96→96→1 with GELU activations. Input x is always standardized inside the model; the output is the next state in original units. There is no input-mode option and no residual connection.
 
-For each coordinate, use 1500 cosine features `cos(omega*x + phase)`, with independent Gaussian frequencies of standard deviation `1/gamma`, uniform phases, and `gamma=0.9954746006464024`. Training minimizes the average squared discrepancy across all 1500×1500 cross moments of observed and generated adjacent pairs. No additional conditional-mean or MSE loss is used.
+For each coordinate, use 1500 cosine features `cos(omega*x + phase)` with independent frequencies $\omega_j \sim \mathcal{N}(0,\gamma^{-2})$ and uniform phases. The second parameter of this mathematical normal-distribution notation is the variance. In NumPy, `normal(loc=0, scale=1/gamma)` takes the standard deviation, so it implements exactly this variance.
+
+The fixed bandwidth is `gamma=0.9954746006464024`: the median absolute distance over all distinct pairs of standardized training input states `(train_x[:-1] - mean) / std`, using the original float64 mean and population standard deviation. The historical experiment uses this numerical bandwidth directly in the features evaluated on original state coordinates. Only the network input is standardized during training; applying an additional standardization inside the Fourier features would change the experiment. Training minimizes the average squared discrepancy across all 1500×1500 cross moments of observed and generated adjacent pairs. No additional conditional-mean or MSE loss is used.
+
+Both supplied observation arrays already exclude their initial transients. The validation file retains 100,000 points from times 9000.00 through 9999.99 on its historical trajectory; see [data preparation](data/README.md) for the burn-in and split boundaries.
 
 The two training stages are:
 

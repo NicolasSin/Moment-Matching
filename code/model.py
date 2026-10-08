@@ -1,9 +1,6 @@
 """Scalar conditional generator and portable checkpoint loading/saving."""
 from __future__ import annotations
 
-from collections.abc import Mapping
-import hashlib
-import json
 import math
 from pathlib import Path
 import uuid
@@ -20,18 +17,15 @@ BIAS_BOUND = 0.05
 
 
 class MMGenerator(nn.Module):
-    def __init__(self, mean: float, std: float, mode: str, seed: int = 20261004,
+    def __init__(self, mean: float, std: float, seed: int = 20261004,
                  dtype: torch.dtype = torch.float32):
         super().__init__()
         if not math.isfinite(mean) or not math.isfinite(std) or std <= 0:
             raise ValueError('Normalization requires a finite mean and positive finite std')
         if dtype not in (torch.float32, torch.float64):
             raise ValueError('MMGenerator supports float32 and float64')
-        if mode not in ('standardized', 'raw'):
-            raise ValueError('Mode must be standardized or raw')
-        self.mode = mode
-        self.register_buffer('x_mean', torch.tensor(mean if mode == 'standardized' else 0., dtype=dtype))
-        self.register_buffer('x_std', torch.tensor(std if mode == 'standardized' else 1., dtype=dtype))
+        self.register_buffer('x_mean', torch.tensor(mean, dtype=dtype))
+        self.register_buffer('x_std', torch.tensor(std, dtype=dtype))
         if not bool(torch.isfinite(self.x_mean) & torch.isfinite(self.x_std)) or float(self.x_std) <= 0:
             raise ValueError('Normalization is not representable in the working dtype')
         self.initialization_seed = int(seed)
@@ -52,48 +46,26 @@ class MMGenerator(nn.Module):
         return self.net(inputs).squeeze(-1)
 
 
-def cpu_state(module):
-    """Clone saved values without changing parameters' or buffers' dtypes."""
-    state = module if isinstance(module, Mapping) else module.state_dict()
-    return {name: value.detach().cpu().contiguous().clone()
-            for name, value in state.items()}
-
-
-def state_hash(module):
-    """Canonical SHA256 over names, dtypes, shapes, and saved tensor bytes."""
-    digest = hashlib.sha256()
-    for name, tensor in sorted(cpu_state(module).items()):
-        header = json.dumps({'name': name, 'dtype': str(tensor.dtype),
-                             'shape': list(tensor.shape)},
-                            sort_keys=True, separators=(',', ':')).encode('utf-8')
-        raw = tensor.numpy().tobytes(order='C')
-        digest.update(len(header).to_bytes(8, 'big'))
-        digest.update(header)
-        digest.update(len(raw).to_bytes(8, 'big'))
-        digest.update(raw)
-    return digest.hexdigest()
-
-
 def save_checkpoint(path, model, **metadata):
     """Atomically save the actual working model, including normalization bits.
 
     Source float64 normalization statistics may be passed separately in metadata;
     they cannot replace the values actually used by this model.
     """
-    reserved = {'schema', 'architecture', 'model', 'normalization', 'dtype',
-                'model_state_hash', 'mode'}
+    reserved = {'schema', 'architecture', 'model', 'normalization', 'dtype'}
     if reserved.intersection(metadata):
         raise ValueError('Checkpoint metadata attempts to override structural fields')
-    state = cpu_state(model)
+    state = {name: value.detach().cpu().contiguous().clone()
+             for name, value in model.state_dict().items()}
     dtype = model.x_mean.dtype
     if dtype not in (torch.float32, torch.float64) or any(t.dtype != dtype for t in state.values()):
         raise ValueError('All model tensors must share float32 or float64 dtype')
     payload = dict(metadata)
     payload.update(
-        schema=SCHEMA, architecture=ARCHITECTURE, model=state, mode=model.mode,
+        schema=SCHEMA, architecture=ARCHITECTURE, model=state,
         normalization={'mean': float(state['x_mean']), 'std': float(state['x_std']),
                        'dtype': str(dtype).removeprefix('torch.')},
-        dtype=str(dtype).removeprefix('torch.'), model_state_hash=state_hash(state),
+        dtype=str(dtype).removeprefix('torch.'),
     )
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,25 +79,9 @@ def save_checkpoint(path, model, **metadata):
 
 
 def load_checkpoint(path, device='cpu'):
+    """Load current or archived checkpoints using the saved working tensors."""
     payload = torch.load(path, map_location='cpu', weights_only=True)
-    if payload.get('schema') != SCHEMA or payload.get('architecture') != ARCHITECTURE:
-        raise ValueError('Unrecognized joint-generator checkpoint schema or architecture')
-    dtype = {'float32': torch.float32, 'float64': torch.float64}.get(payload.get('dtype'))
-    if dtype is None:
-        raise ValueError('Unsupported checkpoint dtype')
     state = payload['model']
-    if any(t.dtype != dtype for t in state.values()):
-        raise ValueError('Checkpoint tensor dtypes disagree with its declaration')
-    if state_hash(state) != payload['model_state_hash']:
-        raise ValueError('Checkpoint model tensor hash mismatch')
-    norm = payload['normalization']
-    if (norm['mean'] != float(state['x_mean']) or norm['std'] != float(state['x_std'])
-            or norm['dtype'] != payload['dtype']):
-        raise ValueError('Checkpoint normalization does not match saved working buffers')
-    if payload.get('mode') not in ('standardized', 'raw'):
-        raise ValueError('Missing or invalid checkpoint input mode')
-    if payload['mode'] == 'raw' and (norm['mean'] != 0. or norm['std'] != 1.):
-        raise ValueError('Raw-input checkpoint must have identity normalization buffers')
-    model = MMGenerator(norm['mean'], norm['std'], mode=payload['mode'], dtype=dtype)
+    model = MMGenerator(float(state['x_mean']), float(state['x_std']), dtype=state['x_mean'].dtype)
     model.load_state_dict(state, strict=True)
     return model.to(device).eval(), payload

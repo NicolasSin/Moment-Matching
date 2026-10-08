@@ -12,11 +12,7 @@
     "state_sampling": 2513425825,
     "mm_noise": 1447829901
   },
-  "initial_model_hash": "e444c6fd1c28d934fbaf19aadd276aaaeb07c81dd424cb9cc7461bd1e182eb07",
   "train_points": 2000000,
-  "training_inputs": {
-    "train_x.npy": "f79d22afa44a4db13cf9cd4c626cc5d6583fedd5cbe72726b0f2dcd5b40e0620"
-  },
   "R_MM": 50,
   "moment_samples": 100000,
   "moment_chunk": 512,

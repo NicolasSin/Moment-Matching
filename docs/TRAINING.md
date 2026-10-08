@@ -21,8 +21,7 @@ existing directories and destinations inside packaged code, data, models, or
 results are refused. On success it writes only:
 
 - `model_final.pt`: the last model, after the fixed update counts.
-- `summary.json`: completed update counts, final training loss, model tensor
-  hash, and elapsed time.
+- `summary.json`: completed update counts, final training loss, and elapsed time.
 
 If interrupted after model initialization, it saves `model_partial.pt` and an
 incomplete summary. That partial model is not the GH4000 result. The simplified
@@ -49,8 +48,14 @@ The script raises an error if the limit is reached before completion.
 
 The network is the original scalar conditional generator: two inputs, hidden
 layers of width 96 with GELU activations, and one unrestricted output. Only the
-state input is standardized. Gaussian noise has unit variance; random Fourier
-features are evaluated on raw state coordinates.
+state input is always standardized; there is no input-mode switch. Gaussian noise
+has unit variance; random Fourier features are evaluated on original state coordinates.
+
+The Gaussian frequencies have variance `gamma**-2`. NumPy's `normal` accepts a
+standard deviation, so the code uses `scale=1/gamma`. The fixed value
+`gamma=0.9954746006464024` was obtained as the median absolute pair distance of
+the standardized training inputs, then used directly in the original-coordinate
+features, following the historical experiment. See the README for this convention.
 
 The supplied configuration retains the original initialization, independent
 random seeds, 1,500 cosine features per coordinate, and full adjacent-pair data
@@ -103,4 +108,4 @@ optimization trajectory. GPU model, library versions, precision settings, and
 numerical-library thread counts can also affect exact reproducibility. The
 supplied archived checkpoint is the reference for the shared results.
 
-The simplified implementation passed both the local numerical comparisons and a complete fresh 1000-Adam/4000-GH retrain in the original CUDA environment. The final saved model tensors are exactly equal to the historical GH4000 checkpoint. See [verification details](VERIFICATION.md) for the tested range, hashes and remaining portability limits.
+The first simplified implementation passed both the local numerical comparisons and a complete fresh 1000-Adam/4000-GH retrain in the original CUDA environment. Its final saved model tensors are exactly equal to the historical GH4000 checkpoint. The subsequent removal of file fingerprints and the input-mode switch has a separate comparison record. See [verification details](VERIFICATION.md) for the tested range and remaining portability limits.

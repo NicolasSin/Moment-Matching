@@ -1,4 +1,4 @@
-"""Raw-pair full RFF moments with replayed finite-Monte-Carlo gradients.
+"""Adjacent-pair RFF moments in original units, with Monte Carlo gradients.
 
 All loss functions return the unscaled scientific loss.  Optional ``weight``
 only multiplies an explicitly requested backward pass; existing gradients are
@@ -13,7 +13,7 @@ import torch
 
 
 class FeatureBank:
-    """Independent same-bandwidth x/y banks with persistent float64 originals."""
+    """Independent x/y frequencies with variance gamma**-2 and float64 originals."""
     NAMES = ('wx', 'bx', 'wy', 'by')
 
     def __init__(self, wx, bx, wy, by, *, _canonical=None):
@@ -38,8 +38,9 @@ class FeatureBank:
         if seed_x == seed_y:
             raise ValueError('Independent coordinate banks require distinct seeds')
         rng_x, rng_y = np.random.default_rng(seed_x), np.random.default_rng(seed_y)
-        arrays = (rng_x.normal(0., 1 / gamma, size), rng_x.uniform(0., 2 * np.pi, size),
-                  rng_y.normal(0., 1 / gamma, size), rng_y.uniform(0., 2 * np.pi, size))
+        # NumPy's scale is the standard deviation: Var(w) = (1 / gamma)**2.
+        arrays = (rng_x.normal(loc=0., scale=1 / gamma, size=size), rng_x.uniform(0., 2 * np.pi, size),
+                  rng_y.normal(loc=0., scale=1 / gamma, size=size), rng_y.uniform(0., 2 * np.pi, size))
         originals = tuple(torch.from_numpy(a) for a in arrays)
         return cls(*(a.to(device=device, dtype=dtype) for a in originals), _canonical=originals)
 
@@ -87,7 +88,7 @@ def _working_bank(bank, x):
 
 
 def data_moment(x, y, bank, chunk=2048):
-    """Full raw-pair cross matrix; chunk results accumulate in float64."""
+    """Full pair cross matrix in original units, accumulated in float64."""
     _validate_states(x, chunk)
     if y.shape != x.shape or y.device != x.device or y.dtype != x.dtype:
         raise ValueError('Data-pair vectors must share shape, device, and dtype')
@@ -122,7 +123,7 @@ def model_moment(model, x, noise, bank, chunk=1024):
 
 
 def moment_loss(model, x, noise, bank, target, chunk=1024, backward=False, weight=1.):
-    """Raw mean of squared K-by-K errors; exact two-pass replay gradient.
+    """Mean of squared K-by-K errors; exact two-pass replay gradient.
 
     Feature evaluation and matrix products use the inputs' working dtype;
     accumulated moments, target differences, and the loss use float64.  This is

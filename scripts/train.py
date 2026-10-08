@@ -21,10 +21,10 @@ from torch.nn.utils import parameters_to_vector, vector_to_parameters
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "code"))
-from common import read_scalar_sequence, setup, sha256, write_json
+from common import read_scalar_sequence, setup, write_json
 from empirical_quadrature import build_empirical_quadrature
 from gh_objective import gh_rule, weighted_moment_loss, weighted_model_moment
-from model import MMGenerator, save_checkpoint, state_hash
+from model import MMGenerator, save_checkpoint
 from objective import FeatureBank, data_moment, moment_loss
 
 
@@ -72,8 +72,6 @@ def train(config, data_directory, output, device):
     started = time.perf_counter()
     deadline = started + config["total_training_seconds_cap"]
     train_path = data_directory / "train_x.npy"
-    if sha256(train_path) != config["training_inputs"]["train_x.npy"]:
-        raise ValueError("Training data do not match the supplied experiment")
     observations = read_scalar_sequence(train_path)
     if len(observations) != config["train_points"]:
         raise ValueError("Unexpected training sequence length")
@@ -82,9 +80,7 @@ def train(config, data_directory, output, device):
     # Initialize in float32, including normalization buffers. The GH phase
     # promotes these exact working values to float64; it never recomputes them.
     model = MMGenerator(normalization["mean"], normalization["std"],
-                        "standardized", seeds["initialization"]).to(device)
-    if state_hash(model) != config["initial_model_hash"]:
-        raise RuntimeError("The initial model differs from the original experiment")
+                        seed=seeds["initialization"]).to(device)
     canonical = FeatureBank.draw(config["features_per_side"], config["gamma_x"],
                                  seeds["rff_x"], seeds["rff_y"])
     generators = {
@@ -195,7 +191,7 @@ def train(config, data_directory, output, device):
         raise
     write_json(output / "summary.json", dict(
         status="completed", adam_updates=adam_updates, gh_updates=gh_updates, training_loss=last_loss,
-        model_state_hash=state_hash(model), elapsed_seconds=time.perf_counter() - started,
+        elapsed_seconds=time.perf_counter() - started,
         selection="Last fixed-step model; validation is not used for training or selection",
     ))
 

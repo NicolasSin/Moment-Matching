@@ -7,7 +7,6 @@
   "gaussian_order": 512,
   "training_optimization_loss": 1.0812081201689768e-08,
   "training_gaussian_order": 128,
-  "model_state_hash": "bedf9b1bf335b14def0decdbb90ed5e766a94fc9a02dd3fa79d19457bc1530af",
   "train_quadrature_nodes": 586,
   "validation_quadrature_nodes": 568,
   "last_full_training_audit": {
