@@ -8,6 +8,13 @@ are excluded entirely, including their remaining finite chains.
 
 ![Reference and three checkpoint comparisons](autocorrelation_checkpoints.png)
 
+![Checkpoint autocorrelation zoom over times 0–0.1 and 0–0.01](autocorrelation_checkpoints_zoom.png)
+
+The additional zoom shows all 11 sampled lags from 0 through 0.1 and a separate
+view of lag zero and lag one (time 0 and 0.01). Its right-hand legend reports
+the values at 0.01. There are no measured intermediate lags between these
+two points; straight connecting lines only guide the eye.
+
 **The model correlations decay substantially too slowly.** Near equality at
 one lag does not extend to longer lags. The following model values average
 the three independently calculated ACF curves:

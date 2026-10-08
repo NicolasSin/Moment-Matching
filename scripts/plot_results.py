@@ -22,6 +22,44 @@ def save(fig, output, name):
     plt.close(fig)
 
 
+def autocorrelation_zoom(times, reference, groups, output, name, title, note):
+    """Zoom saved ACFs; groups contain (label, color, per-chain curves)."""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
+    for ax, limit in zip(axes, (0.1, 0.01)):
+        mask = times <= limit + 1e-12
+        last = np.flatnonzero(mask)[-1]
+        detail = limit == 0.01
+        label = "Training reference"
+        if detail:
+            label += f": {reference[last]:.9f}"
+        ax.plot(times[mask], reference[mask], "o-", color="#20252b", lw=1.5,
+                markersize=5, markerfacecolor="white", label=label, zorder=5)
+        for (label, color, curves), marker in zip(groups, ("s", "^", "D")):
+            mean, spread = curves.mean(axis=0), curves.std(axis=0)
+            ax.fill_between(times[mask], (mean - spread)[mask], (mean + spread)[mask],
+                            color=color, alpha=0.13, linewidth=0)
+            if detail:
+                label += f": {mean[last]:.9f}"
+            ax.plot(times[mask], mean[mask], marker=marker, color=color, lw=1.2,
+                    markersize=5, markerfacecolor="none", label=label)
+        ax.set(xlabel="Time lag", ylabel="Autocorrelation",
+               title="Zoom: 0 to 0.1" if not detail else "First step: 0 to 0.01",
+               xlim=(-limit * 0.025, limit * 1.025))
+        ax.set_xticks(times[mask])
+        ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+        ax.grid(alpha=0.15)
+        ax.legend(frameon=False, fontsize=8,
+                  title=f"ACF at time lag {times[last]:g}" if detail else None,
+                  title_fontsize=9, loc="lower left")
+    fig.suptitle(title, fontsize=14)
+    fig.text(0.5, 0.045, note, ha="center", fontsize=9)
+    fig.text(0.5, 0.012,
+             "Sampling interval = 0.01. Markers are sampled lags; lines only connect them. "
+             "No samples lie between 0 and 0.01.", ha="center", fontsize=9)
+    fig.tight_layout(rect=(0, 0.085, 1, 0.95))
+    save(fig, output, name)
+
+
 def autocorrelation(values, max_lag=10_000):
     """Lag-adjusted ACF, centering each trajectory by its own sample mean.
 
@@ -88,6 +126,10 @@ def autocorrelation_figure(results, output, max_lag=10_000):
              "Each trajectory centered separately; lag-adjusted normalization.", ha="center", fontsize=9)
     fig.tight_layout(rect=(0, 0.05, 1, 0.95))
     save(fig, output, "autocorrelation")
+    autocorrelation_zoom(times, reference, [("GH 4,000", MODEL_COLOR, curves)], output,
+                         "autocorrelation_zoom", "Autocorrelation zoom: K1500 / GH4000",
+                         f"{samples.shape[1]:,} retained states per seed. Model: mean of three ACFs; "
+                         "bands: seed population SD, not a confidence interval.")
 
 
 def checkpoint_autocorrelation_figures(path, output):
@@ -105,6 +147,12 @@ def checkpoint_autocorrelation_figures(path, output):
     colors = {4000: "#cf852d", selected: MODEL_COLOR, 24000: "#8962a6"}
     selected_steps = (4000, selected, 24000)
     output.mkdir(parents=True, exist_ok=True)
+    zoom_groups = [(f"GH {step:,}", colors[step], curves[int(np.flatnonzero(steps == step)[0])])
+                   for step in selected_steps]
+    autocorrelation_zoom(times, reference, zoom_groups, output, "autocorrelation_checkpoints_zoom",
+                         "Autocorrelation zoom: original training checkpoints",
+                         "2M retained states per seed. Models: mean of three ACFs; "
+                         "bands: seed population SD, not a confidence interval.")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
     for ax, mask, title in zip(axes, (lags <= 500, np.ones(len(lags), dtype=bool)),

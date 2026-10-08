@@ -16,6 +16,11 @@ The first simplified version reproduced every saved model tensor in a complete f
 
 ![Autocorrelation of the observed trajectory and GH4000 rollouts](results/figures/autocorrelation.png)
 
+![Autocorrelation zoom over times 0–0.1 and 0–0.01](results/figures/autocorrelation_zoom.png)
+
+The zoom marks each sampled lag. With sample spacing 0.01, the interval
+0–0.01 contains only lag zero and lag one; connecting lines do not add samples.
+
 Autocorrelation adds a temporal diagnostic to the distribution comparisons.
 Each saved trajectory is centered and evaluated separately, with time step 0.01;
 the three model curves are averaged without joining their endpoints. The model's

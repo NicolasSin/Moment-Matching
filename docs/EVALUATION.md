@@ -29,6 +29,13 @@ contains lag, time lag, reference ACF, the three seed ACFs, their mean, and thei
 population standard deviation. The spread across three seeds is descriptive,
 not a confidence interval.
 
+`autocorrelation_zoom.png` and `.pdf` add views over times 0–0.1 and 0–0.01.
+Markers identify the sampled lags; the right panel lists ACF values at 0.01.
+There are 11 sampled lags in the first panel and only two in the second;
+no interpolation or extra observations are used to estimate intermediate lags.
+The checkpoint supplement also produces `autocorrelation_checkpoints_zoom.png`
+and `.pdf` with the same ranges. Existing wider-range figures are retained.
+
 For each trajectory of length `n`, the code subtracts that trajectory's sample
 mean and computes the existing Lorenz evaluation convention:
 
