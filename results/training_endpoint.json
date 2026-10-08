@@ -1,0 +1,26 @@
+{
+  "stage": "gh",
+  "update": 4000,
+  "global_update": 5000,
+  "train_loss": 1.0810652265454966e-08,
+  "validation_loss": 2.3470777153673408e-07,
+  "gaussian_order": 512,
+  "training_optimization_loss": 1.0812081201689768e-08,
+  "training_gaussian_order": 128,
+  "model_state_hash": "bedf9b1bf335b14def0decdbb90ed5e766a94fc9a02dd3fa79d19457bc1530af",
+  "train_quadrature_nodes": 586,
+  "validation_quadrature_nodes": 568,
+  "last_full_training_audit": {
+    "error": 1.7616083017226586e-16,
+    "passed": true,
+    "update": 0,
+    "rule_matches": false
+  },
+  "last_full_validation_audit": {
+    "error": 1.0068701025742161e-15,
+    "passed": true,
+    "update": 4000,
+    "rule_matches": true
+  },
+  "numerical_error_interpretation": "Observed at last audited model, not a bound at the current model"
+}

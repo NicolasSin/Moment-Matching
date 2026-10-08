@@ -1,0 +1,148 @@
+{
+  "points": 2000000,
+  "pairs": 1999999,
+  "burn": 100000,
+  "seed": 20261304,
+  "histogram_metrics": [
+    {
+      "bins": 120,
+      "model": "K1500",
+      "TV": 0.08432404216202108,
+      "Jensen_Shannon_divergence_nats": 0.011005964240471245,
+      "Hellinger_distance": 0.10820649109437382,
+      "cell_probability_RMSE": 6.957311337223442e-05
+    },
+    {
+      "bins": 240,
+      "model": "K1500",
+      "TV": 0.16989708494854247,
+      "Jensen_Shannon_divergence_nats": 0.028906470845870513,
+      "Hellinger_distance": 0.1774190778026314,
+      "cell_probability_RMSE": 4.174791648792236e-05
+    },
+    {
+      "bins": 480,
+      "model": "K1500",
+      "TV": 0.24865512432756218,
+      "Jensen_Shannon_divergence_nats": 0.05548043699939638,
+      "Hellinger_distance": 0.24675653233064088,
+      "cell_probability_RMSE": 2.024406489058665e-05
+    }
+  ],
+  "unbinned_metrics": {
+    "state_W1": 0.1705502824848109,
+    "increment_W1": 0.020451562590165964,
+    "sliced_W1_24_directions": 0.15398192332041954,
+    "projection_W1": [
+      {
+        "angle_degrees": 0.0,
+        "W1": 0.17055252839990648
+      },
+      {
+        "angle_degrees": 7.5,
+        "W1": 0.19136709259265444
+      },
+      {
+        "angle_degrees": 15.0,
+        "W1": 0.208904637360506
+      },
+      {
+        "angle_degrees": 22.5,
+        "W1": 0.2228647284202818
+      },
+      {
+        "angle_degrees": 30.0,
+        "W1": 0.2330112236279314
+      },
+      {
+        "angle_degrees": 37.5,
+        "W1": 0.23916770670446572
+      },
+      {
+        "angle_degrees": 45.0,
+        "W1": 0.2412313762757991
+      },
+      {
+        "angle_degrees": 52.5,
+        "W1": 0.23916962601701106
+      },
+      {
+        "angle_degrees": 60.0,
+        "W1": 0.23301634956738154
+      },
+      {
+        "angle_degrees": 67.5,
+        "W1": 0.22287325940746497
+      },
+      {
+        "angle_degrees": 75.0,
+        "W1": 0.20891339310923987
+      },
+      {
+        "angle_degrees": 82.5,
+        "W1": 0.19137587235985795
+      },
+      {
+        "angle_degrees": 90.0,
+        "W1": 0.17055879900257512
+      },
+      {
+        "angle_degrees": 97.5,
+        "W1": 0.1468192464799899
+      },
+      {
+        "angle_degrees": 105.0,
+        "W1": 0.12057398414974396
+      },
+      {
+        "angle_degrees": 112.5,
+        "W1": 0.09228276103619601
+      },
+      {
+        "angle_degrees": 120.0,
+        "W1": 0.06242980935271079
+      },
+      {
+        "angle_degrees": 127.5,
+        "W1": 0.03151646272890116
+      },
+      {
+        "angle_degrees": 135.0,
+        "W1": 0.014461438593367505
+      },
+      {
+        "angle_degrees": 142.5,
+        "W1": 0.03233571574184819
+      },
+      {
+        "angle_degrees": 150.0,
+        "W1": 0.06249531068901405
+      },
+      {
+        "angle_degrees": 157.5,
+        "W1": 0.09226395547096297
+      },
+      {
+        "angle_degrees": 165.0,
+        "W1": 0.12056533870237722
+      },
+      {
+        "angle_degrees": 172.5,
+        "W1": 0.14681554389988194
+      }
+    ]
+  },
+  "moments": {
+    "data": {
+      "mean": -0.061941588203492735,
+      "std_population": 7.9247970412369515,
+      "mass_positive": 0.496068
+    },
+    "K1500": {
+      "mean": 0.10820160567090677,
+      "std_population": 7.944790004521982,
+      "mass_positive": 0.504515
+    }
+  },
+  "interpretation": "One empirical trajectory; fixed archived edges; bin values are probability mass, not density."
+}

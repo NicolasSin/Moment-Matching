@@ -1,0 +1,6 @@
+# Preserve archived file hashes, including text line endings.
+* -text
+*.npy binary
+*.npz binary
+*.pt binary
+*.png binary
