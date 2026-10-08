@@ -1,4 +1,4 @@
-"""Plot archived model diagnostics and L-BFGS checkpoint autocorrelations."""
+"""Plot archived model diagnostics."""
 from __future__ import annotations
 
 import argparse
@@ -132,83 +132,6 @@ def autocorrelation_figure(results, output, max_lag=10_000):
                          "bands: seed population SD, not a confidence interval.")
 
 
-def checkpoint_autocorrelation_figures(path, output):
-    """Plot ACFs of archived L-BFGS checkpoints along one training trajectory."""
-    with np.load(path, allow_pickle=False) as stored:
-        lags, times = stored["lag"], stored["time"]
-        reference = stored["reference_acf"]
-        steps, seeds = stored["steps"], stored["seeds"]
-        curves = stored["model_acf"]
-        selected = int(stored["selected_step"])
-        excluded = stored["excluded_steps"]
-    if curves.shape != (len(steps), len(seeds), len(lags)) or reference.shape != lags.shape:
-        raise ValueError("Checkpoint ACF arrays have inconsistent dimensions")
-    means, spreads = curves.mean(axis=1), curves.std(axis=1)
-    colors = {4000: "#cf852d", selected: MODEL_COLOR, 24000: "#8962a6"}
-    selected_steps = (4000, selected, 24000)
-    output.mkdir(parents=True, exist_ok=True)
-    zoom_groups = [(f"L-BFGS {step:,}", colors[step], curves[int(np.flatnonzero(steps == step)[0])])
-                   for step in selected_steps]
-    autocorrelation_zoom(times, reference, zoom_groups, output, "autocorrelation_checkpoints_zoom",
-                         "Short-lag autocorrelation: L-BFGS checkpoints (K = 1500)",
-                         "2M retained states per seed. Models: mean of three ACFs; "
-                         "bands: seed population SD, not a confidence interval.")
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
-    for ax, mask, title in zip(axes, (lags <= 500, np.ones(len(lags), dtype=bool)),
-                               ("Short lags", "Long lags")):
-        ax.plot(times[mask], reference[mask], color="#20252b", linewidth=1.7,
-                label="Training reference (2M)")
-        for step in selected_steps:
-            index = int(np.flatnonzero(steps == step)[0])
-            mean, spread = means[index], spreads[index]
-            ax.fill_between(times[mask], (mean - spread)[mask], (mean + spread)[mask],
-                            color=colors[step], alpha=0.13, linewidth=0)
-            ax.plot(times[mask], mean[mask], color=colors[step], linewidth=1.6,
-                    label=f"L-BFGS {step:,}")
-        ax.axhline(0, color="#94a3b8", linewidth=0.7, zorder=0)
-        ax.set(xlabel="Time lag (steps x 0.01)", ylabel="Autocorrelation", title=title,
-               xlim=(0, float(times[mask][-1])))
-        ax.grid(alpha=0.15)
-        ax.legend(frameon=False, fontsize=9)
-    fig.suptitle("Temporal correlation of L-BFGS checkpoints (K = 1500)", fontsize=15)
-    fig.text(0.5, 0.015,
-             "Three seeds, 2M retained states per seed. Lines: mean ACF; bands: seed population SD, not a confidence interval.",
-             ha="center", fontsize=9)
-    fig.tight_layout(rect=(0, 0.05, 1, 0.95))
-    save(fig, output, "autocorrelation_checkpoints")
-
-    fig, axes = plt.subplots(4, 5, figsize=(16, 11), sharex=True, sharey=True)
-    for index, ax in enumerate(axes.flat[:-1]):
-        step = int(steps[index])
-        color = colors.get(step, DATA_COLOR)
-        ax.plot(times, reference, color="#20252b", linewidth=1.0,
-                label="Training reference", zorder=3)
-        for chain, curve in enumerate(curves[index]):
-            ax.plot(times, curve, color=color, linewidth=0.55, alpha=0.35,
-                    label="Individual seeds" if chain == 0 else None)
-        ax.plot(times, means[index], color=color, linewidth=1.2, label="Model mean ACF", zorder=4)
-        ax.axhline(0, color="#94a3b8", linewidth=0.6, zorder=0)
-        ax.set_title(f"L-BFGS {step:,}" + (" (selected)" if step == selected else ""),
-                     loc="left", fontsize=10)
-        ax.set_xlim(0, float(times[-1]))
-        ax.grid(alpha=0.12)
-    note = axes.flat[-1]
-    note.axis("off")
-    excluded_text = "\n".join(f"L-BFGS {int(step):,}" for step in excluded)
-    note.text(0.04, 0.92, f"Excluded checkpoints\n\n{excluded_text}\n\nNonfinite autonomous rollouts.\nNo ACF is shown.",
-              transform=note.transAxes, va="top", fontsize=11, linespacing=1.5, color="#475569")
-    for ax in axes[-1, :-1]:
-        ax.set_xlabel("Time lag")
-    for ax in axes[:, 0]:
-        ax.set_ylabel("Autocorrelation")
-    handles, labels = axes.flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.43, 0.005))
-    fig.suptitle("L-BFGS checkpoints with finite autonomous trajectories (K = 1500)", fontsize=16)
-    fig.tight_layout(rect=(0, 0.035, 1, 0.96))
-    save(fig, output, "autocorrelation_all_checkpoints")
-
-
 def loss_figure(path, output):
     with path.open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
@@ -313,9 +236,6 @@ def main():
         loss_figure(args.results / "loss_history.csv", args.output)
     if (args.results / "joint_histograms.npz").exists():
         joint_figures(args.results / "joint_histograms.npz", args.output, args.joint_bins)
-    checkpoint_acf = args.results / "checkpoint_scan/autocorrelations.npz"
-    if checkpoint_acf.exists():
-        checkpoint_autocorrelation_figures(checkpoint_acf, args.output)
     print(f"Saved figures to {args.output.resolve()}")
 
 

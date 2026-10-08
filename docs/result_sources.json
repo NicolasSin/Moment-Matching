@@ -1,5 +1,5 @@
 {
-  "scope": "Lorenz-63 scalar conditional modeling with 1500 features per coordinate; model after 1000 Adam and 4000 L-BFGS updates; temporal-correlation diagnostics through 24000 L-BFGS updates.",
+  "scope": "Lorenz-63 scalar conditional modeling with 1500 features per coordinate; model after 1000 Adam and 4000 L-BFGS updates.",
   "copied_files": [
     {
       "source": "洛伦兹/GH24000_validation_20261007/data/train_x.npy",
@@ -79,18 +79,6 @@
     "results/figures/autocorrelation.csv": {
       "observations": "data/train_x.npy",
       "trajectories": "results/rollout_samples.npy",
-      "implementation": "scripts/plot_results.py:autocorrelation"
-    },
-    "results/checkpoint_scan/autocorrelations.npz": {
-      "source": "洛伦兹/GH24000_checkpoint_scan_20261008/tables/autocorrelations.npz",
-      "retained_points_per_chain": 2000000,
-      "chains_per_checkpoint": 3,
-      "sampling_interval": 0.01,
-      "finite_checkpoints": 19,
-      "excluded_update_counts": [
-        9000,
-        11000
-      ],
       "implementation": "scripts/plot_results.py:autocorrelation"
     },
     "results/figures/joint_residual_preview.png": {

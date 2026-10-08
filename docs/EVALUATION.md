@@ -64,16 +64,6 @@ With $\Delta t=0.01$, the main panels cover 500 steps (5 time units) and 10,000 
 
 The main figure shows the reference, three individual model curves and their arithmetic mean. Seed standard deviations and shaded bands describe variation across three trajectories; they are not confidence intervals.
 
-## Checkpoint autocorrelation supplement
-
-When `results/checkpoint_scan/autocorrelations.npz` is present, plotting also writes:
-
-- `autocorrelation_checkpoints.png` and `.pdf`: checkpoints after 4,000, 23,000 and 24,000 L-BFGS updates.
-- `autocorrelation_checkpoints_zoom.png` and `.pdf`: the same checkpoints at times 0–0.1 and 0–0.01.
-- `autocorrelation_all_checkpoints.png` and `.pdf`: all 19 checkpoints with finite autonomous trajectories.
-
-These saved curves use three trajectories of 2,000,000 retained states per checkpoint, distinct from the main model's three 1,000,000-state trajectories. Their stored lag range is independent of `--acf-max-lag`. Checkpoints after 9,000 and 11,000 updates are excluded because autonomous trajectories became nonfinite; no surviving-seed or truncated-chain substitute is used.
-
-Selection of the 23,000-update checkpoint was based on marginal and adjacent-pair distributions. Autocorrelation is a separate temporal diagnostic and does not alter that ranking. Agreement of marginal or adjacent-pair distributions does not establish agreement of multistep dynamics or exact stationarity; the scalar observation process is not assumed to be exactly Markov.
+Agreement of marginal or adjacent-pair distributions does not establish agreement of multistep dynamics or exact stationarity; the scalar observation process is not assumed to be exactly Markov.
 
 Numerical comparisons with the archived evaluations are documented in [Numerical consistency and reproducibility](VERIFICATION.md).

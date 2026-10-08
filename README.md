@@ -147,12 +147,6 @@ agree closely with the reference at the first sampled lag but decay substantiall
 more slowly at longer lags. With sampling interval 0.01, the zoom over 0–0.01
 contains only lag zero and lag one; connecting lines add no observations.
 
-A [checkpoint sensitivity study](results/checkpoint_scan/README.md) reports
-autocorrelations after 4,000–24,000 L-BFGS updates. It includes 19 checkpoints
-with finite complete trajectories and records two excluded nonfinite cases.
-Its trajectories retain two million states per seed, whereas the principal
-experiment above retains one million.
-
 ## Reproduction
 
 Use Python 3.12. From the repository root:
