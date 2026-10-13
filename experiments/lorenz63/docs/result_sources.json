@@ -1,0 +1,187 @@
+{
+  "scope": "Lorenz-63 scalar conditional modeling with 1500 features per coordinate; model after 1000 Adam and 4000 L-BFGS updates.",
+  "copied_files": [
+    {
+      "source": "洛伦兹/GH24000_validation_20261007/data/train_x.npy",
+      "file": "data/train_x.npy",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "source": "洛伦兹/GH24000_validation_20261007/data/validation_x.npy",
+      "file": "data/validation_x.npy",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "source": "洛伦兹/GH24000_validation_20261007/run/checkpoint_gh_0004000.pt",
+      "file": "models/k1500_gh4000.pt",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "source": "洛伦兹/GH24000_validation_20261007/rollout_GH4000_20261007/outputs/GH4000_kept_raw.npy",
+      "file": "results/rollout_samples.npy",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "source": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/conditional_metrics.csv",
+      "file": "results/conditional_metrics.csv",
+      "operation": "byte-for-byte copy"
+    }
+  ],
+  "extracted_results": {
+    "results/rollout_metrics.json": "洛伦兹/GH24000_validation_20261007/rollout_GH4000_20261007/outputs/summary.json",
+    "results/loss_history.csv": "洛伦兹/GH24000_validation_20261007/run/history.jsonl",
+    "results/one_step_metrics.json": "洛伦兹/GH24000_validation_20261007/joint_GH4000_interactive_20261007/outputs/summary.json"
+  },
+  "original_environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "torch": "2.13.0+cu130"
+  },
+  "validation_generation": {
+    "original_file": "experiments/lorenz63_residual_mm_20261003/data/validation_x.npy",
+    "original_manifest": "experiments/lorenz63_residual_mm_20261003/generation/manifest.json",
+    "initial_state": [
+      1,
+      1,
+      1
+    ],
+    "sample_dt": 0.01,
+    "discarded_burn_points": 100000,
+    "historical_training_points_before_validation": 800000,
+    "validation_original_grid_indices_inclusive": [
+      900000,
+      999999
+    ],
+    "validation_times_inclusive": [
+      9000.0,
+      9999.99
+    ],
+    "validation_file_already_excludes_burn_in": true
+  },
+  "bandwidth_source": {
+    "source_code": "洛伦兹/GH24000/code/prepare.py",
+    "source_record": "洛伦兹/GH24000/run/bandwidth.json",
+    "gamma": 0.9954746006464024,
+    "definition": "Median absolute distance of all distinct-index pairs of standardized train_x[:-1]",
+    "frequency_variance": "1 / gamma**2",
+    "numpy_frequency_scale": "1 / gamma",
+    "feature_coordinates": "Original state units; standardization occurs only inside the network"
+  },
+  "derived_results": {
+    "results/figures/autocorrelation.csv": {
+      "observations": "data/train_x.npy",
+      "trajectories": "results/rollout_samples.npy",
+      "implementation": "scripts/plot_results.py:autocorrelation"
+    },
+    "results/figures/joint_residual_preview.png": {
+      "input": "results/validation_histograms.npz",
+      "implementation": "scripts/plot_results.py:validation_figure",
+      "operation": "Render observed-input validation densities and their differences."
+    },
+    "results/joint_metrics.json": {
+      "implementation": "scripts/analyze_joint.py",
+      "reproduction": "autonomous_joint"
+    },
+    "results/joint_rollout_2m.npy": {
+      "implementation": "scripts/analyze_joint.py",
+      "reproduction": "autonomous_joint"
+    },
+    "results/joint_histograms.npz": {
+      "implementation": "scripts/analyze_joint.py",
+      "reproduction": "autonomous_joint"
+    },
+    "results/validation_histograms.npz": {
+      "implementation": "scripts/analyze_validation.py",
+      "reproduction": "observed_input_analysis"
+    },
+    "results/loss_history.csv": {
+      "input": "data/training_records.jsonl",
+      "implementation": "scripts/export_training_records.py",
+      "reproduction": "historical_training_records",
+      "operation": "Re-export original scientific monitoring values; not a new training run or numerical audit."
+    },
+    "results/training_endpoint.json": {
+      "input": "data/training_records.jsonl",
+      "implementation": "scripts/export_training_records.py",
+      "reproduction": "historical_training_records",
+      "operation": "Re-export original scientific monitoring values; not a new training run or numerical audit."
+    }
+  },
+  "path_convention": "Run commands from the directory containing this experiment README (experiments/lorenz63 in the manuscript repository). Inputs and commands use bundled repository-relative paths. Historical archive identifiers describe provenance only; those external directories are not needed to run the supplied analyses.",
+  "superseded_joint_archive": {
+    "seed": 20261304,
+    "source_archive": "洛伦兹/joint_probability_surfaces_2m_20261008",
+    "reason": "The original retained trajectory shared its first 1000000 states with marginal chain 0. Replaced by the prespecified seed 2026101001.",
+    "role": "Historical provenance only; not used by the current joint results."
+  },
+  "reproduction": {
+    "marginal_and_acf": {
+      "command": "python scripts/evaluate.py --output outputs/evaluation",
+      "inputs": [
+        "models/k1500_gh4000.pt",
+        "data/train_x.npy",
+        "data/validation_x.npy"
+      ],
+      "outputs": [
+        "rollout_samples.npy",
+        "rollout_metrics.json",
+        "validation_histograms.npz"
+      ]
+    },
+    "autonomous_joint": {
+      "command": "python scripts/analyze_joint.py --output outputs/joint",
+      "inputs": [
+        "models/k1500_gh4000.pt",
+        "data/train_x.npy"
+      ],
+      "outputs": [
+        "joint_rollout_2m.npy",
+        "joint_histograms.npz",
+        "joint_metrics.json"
+      ],
+      "seed": 2026101001,
+      "generated_steps": 2100000,
+      "burn_steps": 100000,
+      "retained_steps": 2000000,
+      "seed_selection": "Fixed before generation; no selection according to resulting metrics."
+    },
+    "observed_input_analysis": {
+      "command": "python scripts/analyze_validation.py --output outputs/validation",
+      "inputs": [
+        "models/k1500_gh4000.pt",
+        "data/validation_x.npy"
+      ],
+      "outputs": [
+        "one_step_metrics.json",
+        "conditional_metrics.csv",
+        "validation_histograms.npz"
+      ],
+      "noise_seed": 2026100731
+    },
+    "historical_training_records": {
+      "command": "python scripts/export_training_records.py --output outputs/training_records",
+      "inputs": [
+        "data/training_records.jsonl"
+      ],
+      "outputs": [
+        "loss_history.csv",
+        "training_endpoint.json"
+      ],
+      "scope": "Re-export of original scientific monitoring records, not a new training run or a recomputation of the historical audits."
+    },
+    "figures": {
+      "command": "python scripts/plot_results.py --results results --output outputs/figures",
+      "inputs": [
+        "results/"
+      ],
+      "scope": "Plots whichever supplied diagnostic files are present; new analysis output directories can be passed with --results."
+    }
+  },
+  "bundled_record_sources": {
+    "data/training_records.jsonl": {
+      "historical_archive": "洛伦兹/GH24000_validation_20261007/run/history.jsonl",
+      "selection": "Scientific monitor records through global update 5000, including endpoint audit metadata; file fingerprints and environment paths omitted."
+    }
+  }
+}

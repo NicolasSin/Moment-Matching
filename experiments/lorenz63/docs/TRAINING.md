@@ -88,3 +88,9 @@ CUDA wheel source. The recorded installation uses the CUDA 13.0 build; supported
 installation options are listed in the [PyTorch installation instructions](https://pytorch.org/get-started/locally/).
 
 `--device cpu` is supported, but CPU and CUDA random streams differ. Hardware, library versions, precision and reduction order can affect the optimization trajectory. The supplied checkpoint and arrays define the recorded results; the tested numerical scope is described in [Numerical consistency and reproducibility](VERIFICATION.md).
+
+## Historical monitoring and fixed-step replay
+
+The supplied configuration replays the optimization path to the archived 4,000-update model. The original trainer supported adaptive monitoring, validation-based selection and quadrature audits; the current fixed-step entry point does not reproduce that monitoring toolchain. Through update 4,000, actual training used 128 noise nodes and 586 input nodes at input-refinement level zero. Monitoring, rather than training, progressed to 256 and 512 noise nodes. The stored best-validation observation at update 3,760 is distinct from the supplied update-4,000 weights.
+
+`data/training_records.jsonl` preserves the scientific monitoring values needed to export the archived loss curve and endpoint with `scripts/export_training_records.py`. The historical training audit at update zero is not a numerical error bound for the final model; each audit retains its own recorded update and interpretation. The current training command writes its final model and summary, not a new copy of the historical monitoring records.

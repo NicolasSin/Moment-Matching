@@ -47,3 +47,13 @@ PNG and PDF figures were generated from the saved numerical results and visually
 The training comparisons used Python 3.12.14, NumPy 2.3.5, SciPy 1.18.1 and PyTorch 2.13.0+cu130, with four numerical-library threads. Autonomous evaluation used CPU float64 and one numerical-library/PyTorch compute thread.
 
 Exact equality applies to the stated numerical comparisons in the tested environment. These checks do not establish equality of population distributions, statistical independence, exact scalar Markov dynamics or reproducibility on every hardware/software combination.
+
+## Portable analyses and separately seeded joint record
+
+The complete joint workflow was run with prespecified seed 2026101001: 2,100,000 CPU-float64 states were generated, the first 100,000 were discarded, and all 2,000,000 retained states were finite. The initial training-data index was 1276103. Each of the 120-, 240- and 480-bin grids contained every one of the 1,999,999 adjacent pairs from each trajectory. The new retained prefix is distinct from each of the three archived marginal/ACF chains.
+
+State W1 was 0.057892684368611606 by full-sample SciPy integration; independent sorted-sample matching differed by less than 2e-16. Reanalysis via `analyze_joint.py --trajectory` reproduced every saved histogram array and scientific metric exactly. The seed was fixed before examining these results. This is a finite empirical comparison against the same training reference, not a population independence or stationarity test.
+
+The full `analyze_validation.py` run covered 99,999 observed inputs with 32 latent draws each. All 25,583 numerical fields in the one-step report, all values in the 41-row conditional table and all 17 saved histogram arrays matched the original validation analysis exactly. This included 24 projection directions and four independent diagnostic feature banks of 256 features.
+
+`export_training_records.py` reconstructed the archived loss-history CSV and training-endpoint JSON byte-for-byte from the bundled historical monitoring records. It did not rerun training or recompute old audits. The model, training code, configuration, observations and three marginal/ACF trajectories were unchanged. Updated joint and observed-input figures were generated through the repository plotting script and visually inspected.

@@ -37,7 +37,7 @@ Let $(x_i,y_i)$ denote consecutive observations, with $y_i=x_{i+1}$, and let $m_
 training-input mean and population standard deviation. The surrogate is
 
 $$
-\widehat X_{n+1}=G_\theta\!\left(\frac{\widehat X_n-m_x}{s_x},\varepsilon_n\right),
+\widehat X_{n+1}=G_\theta\left(\frac{\widehat X_n-m_x}{s_x},\varepsilon_n\right),
 \qquad \varepsilon_n\overset{\mathrm{iid}}\sim\mathcal N(0,1).
 $$
 
@@ -59,8 +59,8 @@ $$
 M^{\mathrm{data}}_{jk}=\frac1N\sum_{i=1}^N\phi_j(x_i)\psi_k(y_i),
 \qquad
 M^\theta_{jk}=\frac1N\sum_{i=1}^N\phi_j(x_i)
-\mathbb E_\varepsilon\!\left[
-\psi_k\!\left(G_\theta\!\left(\frac{x_i-m_x}{s_x},\varepsilon\right)\right)
+\mathbb E_\varepsilon\left[
+\psi_k\left(G_\theta\left(\frac{x_i-m_x}{s_x},\varepsilon\right)\right)
 \right],
 $$
 
@@ -130,11 +130,13 @@ noise samples per input. This differs from the autonomous sampling protocol.
 
 ![Adjacent-time joint probability masses](results/figures/joint_probability_surface.png)
 
-The joint figure uses a separate continuous trajectory of 2,000,000 retained
-states and 1,999,999 adjacent pairs. Bin heights are probability masses.
-The state-marginal Wasserstein-1 distance is 0.1705502825. Its inference batch
-size differs from the three-trajectory experiment; the two numerical records
-are evaluated separately.
+The joint figure uses a separately seeded trajectory (seed **2026101001**),
+with 2,100,000 generated states and 100,000 discarded burn-in states. Its
+2,000,000 retained states give 1,999,999 adjacent pairs. This model-noise stream
+is distinct from all three marginal/ACF streams; the model and training reference
+remain shared. Bin heights are probability masses.
+The state-marginal Wasserstein-1 distance is 0.05789268437.
+The seed was fixed before this trajectory was evaluated.
 
 ### Temporal correlation
 
@@ -149,7 +151,8 @@ contains only lag zero and lag one; connecting lines add no observations.
 
 ## Reproduction
 
-Use Python 3.12. From the repository root:
+Use Python 3.12. Run commands from this experiment directory. In the manuscript
+repository, first run `cd experiments/lorenz63`:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -157,12 +160,22 @@ python scripts/plot_results.py
 ```
 
 The plotting command reads saved results and writes PNG/PDF figures to
-`outputs/figures/`. Full CPU evaluation and GPU training are available through:
+`outputs/figures/`. The complete evaluation stages and historical-record export
+are available through:
 
 ```bash
 python scripts/evaluate.py --output outputs/evaluation
-python scripts/train.py --device cuda --output outputs/training
+python scripts/analyze_joint.py --output outputs/joint
+python scripts/analyze_validation.py --output outputs/validation
+python scripts/export_training_records.py --output outputs/training_records
 ```
+
+Pass each output directory to `plot_results.py --results PATH` to redraw its
+figures; commands and metric definitions are in [Evaluation](docs/EVALUATION.md).
+These steps use bundled inputs and require no original local archive directories.
+The training-record export reconstructs historical monitoring files; it does not
+recompute those observations. Fresh fixed-step training is available with
+`python scripts/train.py --device cuda --output outputs/training`.
 
 Each run requires a new output directory. CUDA training requires a compatible
 PyTorch build; details are given in [Training](docs/TRAINING.md).
@@ -175,9 +188,12 @@ PyTorch 2.13.0+cu130, and Matplotlib 3.11.2.
 | `configs/experiment.json` | Hyperparameters and random seeds |
 | `scripts/train.py` | Two-stage optimization |
 | `scripts/evaluate.py` | Autonomous and observed-input diagnostics |
+| `scripts/analyze_joint.py` | Separately seeded autonomous joint analysis |
+| `scripts/analyze_validation.py` | Full observed-input and conditional-bin analysis |
+| `scripts/export_training_records.py` | Export of bundled historical training records |
 | `scripts/plot_results.py` | Figures from saved numerical results |
 | `models/k1500_gh4000.pt` | Model after 1,000 Adam and 4,000 L-BFGS updates |
-| `data/` | Training and validation observations |
+| `data/` | Training/validation observations and historical monitoring records |
 | `results/` | Metrics, trajectories, and figures |
 | `docs/` | Methods, evaluation protocols, and numerical provenance |
 
@@ -191,7 +207,7 @@ distinction between one-step conditional modeling and temporal memory. It does
 not isolate memory loss from one-step approximation error or a shift in the
 model's long-run marginal distribution.
 
-Validation data were monitored during training, and checkpoint comparison uses
+Validation data were monitored during training, and distribution comparison uses
 the training reference; neither is an untouched test set. Finite trajectories
 and burn-in do not prove stationarity, existence or uniqueness of an invariant
 measure, or the manuscript's finite-step contraction assumptions. Numerical

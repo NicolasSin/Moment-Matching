@@ -189,17 +189,19 @@ def joint_figures(path, output, bins):
     with np.load(path, allow_pickle=False) as stored:
         edges = stored[f"edges_{bins}"]
         counts = [stored[f"{name}_counts_{bins}"] for name in ("data", "K1500")]
-    if any(c.sum() != 1_999_999 for c in counts):
-        raise ValueError("Archived 2M joint histograms must contain 1,999,999 adjacent pairs")
     probabilities = [c / c.sum() for c in counts]
     limit = max(p.max() for p in probabilities)
-    titles = ("Observed training trajectory", "Autonomous model: K = 1500; L-BFGS 4,000")
+    metadata_path = path.with_name("joint_metrics.json")
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
+    seed = metadata.get("seed", metadata.get("protocol", {}).get("seed"))
+    label = "Autonomous model" + (f" (seed {seed})" if seed is not None else "")
+    titles = ("Observed training trajectory", label)
     fig, axes = plt.subplots(1, 2, figsize=(10.8, 4.8), constrained_layout=True)
     for ax, probability, title in zip(axes, probabilities, titles):
         mesh = ax.pcolormesh(edges, edges, probability.T, shading="flat", cmap="viridis", vmin=0, vmax=limit)
         ax.set(xlabel=r"$x_t$", ylabel=r"$x_{t+1}$", title=title, aspect="equal")
     fig.colorbar(mesh, ax=list(axes), label="Probability per bin", shrink=0.85)
-    fig.suptitle(f"Adjacent-pair probabilities: 2,000,000 continuous points; {bins} x {bins} bins")
+    fig.suptitle(f"Adjacent-pair probabilities: {int(counts[1].sum()):,} model pairs; {bins} x {bins} bins")
     save(fig, output, "joint_probability")
 
     centers = (edges[:-1] + edges[1:]) / 2
@@ -217,6 +219,46 @@ def joint_figures(path, output, bins):
     save(fig, output, "joint_probability_surface")
 
 
+
+def validation_figure(path, output):
+    """Observed-input joint and increment densities; arrays are stored as [x, y]."""
+    with np.load(path, allow_pickle=False) as stored:
+        histograms = dict(stored)
+    report_path = path.with_name("one_step_metrics.json")
+    if report_path.exists():
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        metrics = report["diagnostics"]
+    else:
+        report = json.loads(path.with_name("rollout_metrics.json").read_text(encoding="utf-8"))["validation"]
+        metrics = report
+    fig, axes = plt.subplots(2, 3, figsize=(17, 10))
+    for row, view in enumerate(("joint", "residual")):
+        x_edges, y_edges = histograms["x_edges"], histograms[view + "_y_edges"]
+        area = np.diff(x_edges)[:, None] * np.diff(y_edges)[None, :]
+        data = histograms[view + "_data_counts"]
+        model = histograms[view + "_model_counts"]
+        data_density, model_density = data / (data.sum() * area), model / (model.sum() * area)
+        difference = model_density - data_density
+        maximum, delta = max(data_density.max(), model_density.max()), np.max(np.abs(difference))
+        for col, (values, title) in enumerate(((data_density, "Observed validation pairs"),
+                (model_density, "L-BFGS 4,000: 32 latent draws per observed input"),
+                (difference, "Model minus observed"))):
+            ax = axes[row, col]
+            artist = ax.pcolormesh(x_edges, y_edges, values.T, shading="auto",
+                                  cmap="RdBu_r" if col == 2 else "magma",
+                                  vmin=-delta if col == 2 else 0, vmax=delta if col == 2 else maximum)
+            fig.colorbar(artist, ax=ax, label="Density difference" if col == 2 else "Probability density")
+            ax.set(title=title, xlabel="Current x", ylabel="Next state y" if view == "joint" else "Increment y - x")
+    pairs = int(histograms["joint_data_counts"].sum())
+    generated = int(histograms["joint_model_counts"].sum())
+    fig.suptitle("L-BFGS 4,000: validation-data joint distribution diagnostics", fontsize=17, fontweight="bold")
+    fig.text(.07, .022,
+             f"All {pairs:,} validation pairs; {generated:,} model pairs. Raw units, 180 x 180 common bins, no smoothing.\n"
+             f"W1(y) = {metrics['marginal_y_W1']:.5g}; W1(y-x) = {metrics['residual_W1']:.5g}. "
+             "Fixed observed inputs; no autonomous rollout.", fontsize=10)
+    fig.tight_layout(rect=(0, .065, 1, .95))
+    save(fig, output, "joint_residual_preview")
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results", type=Path, default=ROOT / "results")
@@ -230,12 +272,15 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10,
                          "axes.spines.top": False, "axes.spines.right": False})
-    rollout_figure(args.results, args.output)
-    autocorrelation_figure(args.results, args.output, args.acf_max_lag)
+    if (args.results / "rollout_samples.npy").exists():
+        rollout_figure(args.results, args.output)
+        autocorrelation_figure(args.results, args.output, args.acf_max_lag)
     if (args.results / "loss_history.csv").exists():
         loss_figure(args.results / "loss_history.csv", args.output)
     if (args.results / "joint_histograms.npz").exists():
         joint_figures(args.results / "joint_histograms.npz", args.output, args.joint_bins)
+    if (args.results / "validation_histograms.npz").exists():
+        validation_figure(args.results / "validation_histograms.npz", args.output)
     print(f"Saved figures to {args.output.resolve()}")
 
 

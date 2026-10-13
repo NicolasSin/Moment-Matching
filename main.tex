@@ -1,0 +1,1221 @@
+\documentclass[final,hidelinks]{siamart251216}
+
+\usepackage{amsfonts}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{mathtools}
+\setlength{\emergencystretch}{2em}
+
+\newcommand{\cZ}{\mathcal{Z}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cB}{\mathcal{B}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\Law}{\operatorname{Law}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Wone}{W_1}
+\newcommand{\ip}[2]{\left\langle #1,#2\right\rangle}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
+\newsiamremark{remark}{Remark}
+
+\title{Capabilities and Limits of Memoryless Conditional Generative Models for Coarse-Grained Dynamics}%\thanks{Work in progress.}
+% \author{Author Name\thanks{Affiliation to be inserted.}}
+% \headers{Probabilistic One-Step Coarse-Graining}{Author Name}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Accurate learning of a stationary one-step conditional law does not by
+itself guarantee faithful temporal statistics under recursive sampling.
+We analyze this distinction for coarse observations of deterministic
+dynamics with a chosen invariant probability measure. Under stationary
+initialization, recursive sampling of the exact conditional law preserves
+the coarse marginal and the complete adjacent-time joint distribution.
+At longer lags, the difference between the true conditional law and the
+repeated composition of the one-step law defines a composition defect.
+A projection-operator representation identifies the unresolved feedback
+responsible for this defect. For learned conditional models, errors in
+stationary lagged moments separate into composition error, propagated
+one-step approximation error, and invariant-measure shift. Under an
+additional finite-step Wasserstein contraction assumption, we bound the
+invariant-measure shift in terms of one-step learning error and transient
+amplification. The analysis distinguishes errors due to imperfect
+conditional-law learning from temporal discrepancies that can persist
+even when that learning is exact.
+\end{abstract}
+
+% \begin{keywords}
+% coarse-graining, deterministic chaos, conditional law, ergodic dynamics, memory, Mori--Zwanzig, Koopman operator, generative modeling, flow matching
+% \end{keywords}
+
+% \begin{MSCcodes}
+% 37A25, 37M10, 60J05, 65P20
+% \end{MSCcodes}
+
+\section{Introduction}
+\label{sec:intro}
+
+Multiscale chaotic dynamical systems, such as turbulence, motivate reduced models that reproduce long-time statistics even when detailed trajectories are difficult to predict. When a deterministic dynamical system is observed through a coarse variable, only part of its state information is retained. A single coarse state generally corresponds to an ensemble of compatible fine states. Those fine states can evolve to different coarse states at the next observation time.
+
+This observation suggests a probabilistic modeling target. Instead of
+seeking a deterministic map from the present coarse state to the next one,
+we model the conditional distribution of the next coarse state given the
+present one. In the stationary regime, this law is
+\begin{equation}
+    K_\Delta(x,\cdot)
+    =\Law_\mu(X_{n+1}\mid X_n=x),
+    \label{eq:intro_kernel}
+\end{equation}
+where $\Delta$ is the sampling interval and $\Law_\mu$ refers to initialization of the full system with a chosen invariant probability measure $\mu$. Stationarity makes this conditional law independent of $n$. Conditioning on the present coarse state averages over compatible fine states according to their stationary conditional distribution.
+
+The observed history may carry predictive information beyond the current coarse state, so the full-history conditional law
+\begin{equation}
+    \Law(X_{n+1}\mid X_n,X_{n-1},\ldots)
+    \label{eq:intro_history}
+\end{equation}
+need not equal \eqref{eq:intro_kernel}. Information-theoretic analyses characterize how the attainable accuracy of a reduced model depends on its available information and prediction target~\cite{lozanoduran2026ladder}. Models that retain observed history include neural networks with explicit history inputs~\cite{fu2020memory}, stochastic autoregressive closures connected to the Mori--Zwanzig
+formalism~\cite{linlu2021}, and conditional generative models with evolving memory states~\cite{armegioiu2026memory,yanghe2026memory}.
+
+For a model conditioned only on the current coarse state, generating a trajectory requires reusing the one-step law. With exact conditional sampling and fresh draws at each step, this gives the first-order
+canonical Markov approximation of the observed process~\cite{gray2011}:
+\begin{equation}
+    \bar X_{n+1}\sim K_\Delta(\bar X_n,\cdot).
+    \label{eq:recursive_surrogate_intro}
+\end{equation}
+However, accurate learning of a stationary one-step conditional law does not by itself guarantee faithful temporal statistics under recursive sampling. Under stationary initialization, the exact recursive model preserves the coarse marginal and the complete adjacent-time joint distribution. This result requires only stationarity of the observed process and therefore also apply when the underlying dynamics is stochastic. At longer lags, the discrepancy is governed by the composition defect
+\[
+    D_m=K_{m\Delta}-K_\Delta^m,
+\]
+where $K_{m\Delta}$ is the true conditional law at lag $m\Delta$. Conditional-expectation projections identify how unresolved information feeds back into coarse observables and produces this defect. For a learned kernel, errors in stationary lagged moments separate into composition error, propagated one-step approximation error, and invariant-measure shift. An additional finite-step Wasserstein contraction assumption gives a Wasserstein bound on the invariant-measure shift. For scientific machine learning, these results clarify what improved one-step fitting can achieve.
+
+\section{Deterministic coarse dynamics and the stationary one-step conditional law}
+\label{sec:setting}
+
+Let $(\cZ,\cB(\cZ))$ be a standard Borel state space and let
+\begin{equation}
+    Z_{n+1}=\Phi_\Delta(Z_n),
+    \qquad
+    \Phi_\Delta:\cZ\to\cZ,
+    \label{eq:full_dynamics}
+\end{equation}
+be a measurable sampled map of a deterministic dynamical system.
+Fix an invariant probability measure $\mu$ and take $Z_0\sim\mu$,
+so that the full process is stationary. All conditional laws and
+statistics below refer to this choice of $\mu$.
+
+Let
+\begin{equation}
+    \xi:\cZ\to\cX
+    \label{eq:coarse_map}
+\end{equation}
+be a measurable coarse-graining map into another standard Borel space
+$\cX$, and define the observed process
+\begin{equation}
+    X_n=\xi(Z_n).
+    \label{eq:coarse_process}
+\end{equation}
+The coarse process is stationary with marginal
+\begin{equation}
+    \mu_X=\xi_\#\mu.
+    \label{eq:coarse_marginal}
+\end{equation}
+The map $\xi$ may represent, for example, a
+coordinate projection, a projection onto low Fourier modes, a spatial
+averaging operation, or a collection of resolved observables.
+
+Disintegration on standard Borel spaces provides a regular conditional
+distribution $\mu(dz\mid x)$ of the full state given its coarse state
+\cite{kallenberg2021,changpollard1997}. Fix a measurable version of this
+conditional distribution on $\cX$ and define the
+\emph{stationary one-step conditional law} by
+\begin{equation}
+    \boxed{
+    K_\Delta(x,A)
+    =
+    \int_{\cZ}
+    \mathbf 1_A\!\left(\xi(\Phi_\Delta(z))\right)
+    \mu(dz\mid x),
+    }
+    \qquad
+    A\in\cB(\cX).
+    \label{eq:projected_kernel}
+\end{equation}
+Equivalently,
+\begin{equation}
+    K_\Delta(x,\cdot)
+    =
+    (\xi\circ\Phi_\Delta)_\#
+    \mu(\cdot\mid x)
+    =
+    \Law_\mu(X_{n+1}\mid X_n=x).
+    \label{eq:conditional_law}
+\end{equation}
+Identities between stationary conditional laws are understood
+$\mu_X$-almost everywhere.
+
+Thus, the one-step conditional law is obtained by propagating the
+conditional distribution of full states on the fiber $\xi^{-1}(x)$ through
+the deterministic dynamics and projecting the result back to the coarse
+state space. Although the full dynamics is deterministic, distinct full
+states compatible with the same coarse state can evolve to different coarse
+states after one sampling interval. Consequently, $K_\Delta(x,\cdot)$ need
+not be concentrated at a single point.
+
+\section{Recursive probabilistic closure and exact stationary structure}
+\label{sec:recursive}
+
+Define the recursive surrogate by
+\begin{equation}
+    \bar X_{n+1}\sim K_\Delta(\bar X_n,\cdot),
+    \label{eq:recursive_exact}
+\end{equation}
+with successive draws conditionally independent given the current
+surrogate state. This construction removes dependence on the observed
+past beyond the current state.
+
+Despite this loss of memory, two exact structural properties hold.
+
+\begin{theorem}[Stationary marginal and adjacent-pair preservation]
+\label{thm:preservation}
+The one-step conditional law $K_\Delta$ satisfies
+\begin{equation}
+\boxed{
+    \mu_XK_\Delta=\mu_X.
+}
+    \label{eq:invariant_mu}
+\end{equation}
+Furthermore, if
+\begin{equation}
+    \Gamma_\Delta(dx,dx')
+    =\Law_\mu(X_n,X_{n+1}),
+    \label{eq:true_pair_law}
+\end{equation}
+then
+\begin{equation}
+\boxed{
+    \Gamma_\Delta(dx,dx')
+    =\mu_X(dx)K_\Delta(x,dx').
+}
+    \label{eq:pair_factorization}
+\end{equation}
+Hence, if $\bar X_0\sim\mu_X$, the recursive surrogate \eqref{eq:recursive_exact} has the same one-time marginal and the same adjacent-time pair distribution as the true coarse process.
+\end{theorem}
+
+\begin{proof}
+For every measurable $A\subset\cX$,
+\begin{align}
+    (\mu_XK_\Delta)(A)
+    &=\int K_\Delta(x,A)\,\mu_X(dx)\\
+    &=\Prob_\mu(X_{n+1}\in A)\\
+    &=\Prob_\mu(X_n\in A)\\
+    &=\mu_X(A),
+\end{align}
+where the third equality uses stationarity.  The pair-law identity is the disintegration of the joint law of $(X_n,X_{n+1})$ with respect to its first marginal.
+\end{proof}
+
+\begin{corollary}[Statistics preserved by the exact recursive closure]
+\label{cor:preserved_stats}
+Under stationary initialization, for every integrable state observable $\varphi$,
+\begin{equation}
+    \E[\varphi(\bar X_n)]
+    =\E[\varphi(X_n)].
+    \label{eq:onetime_exact}
+\end{equation}
+For every square-integrable pair of observables $f,g$,
+\begin{equation}
+\boxed{
+    \E[f(\bar X_n)g(\bar X_{n+1})]
+    =\E[f(X_n)g(X_{n+1})].
+}
+    \label{eq:lagone_exact}
+\end{equation}
+\end{corollary}
+
+Thus the exact recursive closure has no intrinsic bias in the stationary distribution of the coarse state, in distributions of instantaneous nonlinear observables such as energy, or in lag-one pair statistics.  This conclusion requires no Markov property of the true coarse process.
+
+\section{Multi-step dynamics and the composition defect}
+\label{sec:multistep}
+
+For $m\ge1$, define the true stationary $m$-step conditional law by
+\begin{equation}
+    K_{m\Delta}(x,A)
+    =\Prob_\mu(X_{n+m}\in A\mid X_n=x).
+    \label{eq:true_mstep}
+\end{equation}
+Recursive use of the stationary one-step conditional law produces instead
+the $m$-fold composition $K_\Delta^m$.  We define the difference
+\begin{equation}
+\boxed{
+    D_m=K_{m\Delta}-K_\Delta^m,
+    \qquad m\ge1,
+}
+    \label{eq:composition_defect}
+\end{equation}
+as the \emph{composition defect}.  A nonzero $D_m$ means that recursive
+sampling of the exact one-step conditional law does not recover the true
+conditional distribution at lag $m$.
+
+\subsection{Lagged joint distributions}
+
+The true stationary lag-$m$ joint distribution is
+\begin{equation}
+    \Gamma_m(dx,dx')
+    =
+    \Law_\mu(X_n,X_{n+m})
+    =
+    \mu_X(dx)\,K_{m\Delta}(x,dx').
+    \label{eq:true_lagged_pair}
+\end{equation}
+If the exact one-step conditional law is instead used recursively, with
+stationary initialization $\widetilde X_n\sim\mu_X$, the corresponding
+lag-$m$ joint distribution is
+\begin{equation}
+    \widetilde\Gamma_m(dx,dx')
+    =
+    \mu_X(dx)\,K_\Delta^m(x,dx').
+    \label{eq:recursive_lagged_pair}
+\end{equation}
+Consequently,
+\begin{equation}
+    \Gamma_m(dx,dx')-\widetilde\Gamma_m(dx,dx')
+    =
+    \mu_X(dx)\,D_m(x,dx').
+    \label{eq:lagged_pair_defect}
+\end{equation}
+For $m=1$, the two joint distributions agree exactly by construction.
+For $m\ge2$, their discrepancy is governed by the composition defect.
+
+This comparison concerns the full lagged pair distribution. Particular
+statistics, such as autocovariance, are obtained by integrating against it.
+
+\subsection{State autocovariance}
+
+Suppose $\cX\subseteq\mathbb R^d$ and
+\[
+    \int_{\cX}\norm{x}^2\,\mu_X(dx)<\infty.
+\]
+Let
+\[
+    \bar x
+    =
+    \int_{\cX}x\,\mu_X(dx)
+\]
+be the stationary mean of the coarse state.
+
+For the true coarse process and the exact recursive closure, define the
+lag-$m$ autocovariance matrices
+\begin{equation}
+\begin{aligned}
+    C^{\rm true}(m)
+    &=
+    \E_\mu\!\left[
+        (X_n-\bar x)
+        (X_{n+m}-\bar x)^\top
+    \right],\\
+    C^{\rm rec}(m)
+    &=
+    \E\!\left[
+        (\widetilde X_n-\bar x)
+        (\widetilde X_{n+m}-\bar x)^\top
+    \right],
+\end{aligned}
+    \label{eq:lagged_correlations}
+\end{equation}
+where $\{\widetilde X_n\}$ denotes the recursive process generated by the
+exact one-step conditional law $K_\Delta$ and initialized with
+$\widetilde X_n\sim\mu_X$.
+
+Each autocovariance is the integral of
+$(x-\bar x)(x'-\bar x)^\top$ against the corresponding lagged joint
+distribution. Integrating \eqref{eq:lagged_pair_defect} against this
+matrix-valued function therefore gives
+\begin{equation}
+\boxed{
+    C^{\rm true}(m)-C^{\rm rec}(m)
+    =
+    \int_{\cX}\mu_X(dx)
+    \int_{\cX}
+    (x-\bar x)(x'-\bar x)^\top
+    D_m(x,dx').
+}
+    \label{eq:corr_identity}
+\end{equation}
+
+Equation~\eqref{eq:corr_identity} shows that the error in the state
+autocovariance is a moment of the composition defect itself. At lag one, $D_1=0$ by construction, so the adjacent-time covariance is
+reproduced exactly. At longer lags, a nonzero composition defect can alter
+the temporal correlation structure even though the recursive closure
+preserves the stationary marginal $\mu_X$ exactly.
+
+Section~\ref{sec:learning} extends this comparison to learned conditional
+laws, separating the composition defect from one-step approximation error
+and invariant-measure shift.
+
+\section{Projection-operator interpretation of the composition defect}
+\label{sec:projection}
+
+To explain why composition error can persist even with an exact one-step law, we represent the conditional kernels of Section~\ref{sec:multistep} as operators on coarse observables. Let $U_\Delta$ be the Koopman operator associated with the full deterministic
+dynamics,
+\begin{equation}
+    U_\Delta F=F\circ\Phi_\Delta,
+    \label{eq:koopman}
+\end{equation}
+for observables $F$ on the full state space.  Let
+\[
+    \mathcal H_X
+    =
+    \left\{
+        \varphi\circ\xi:
+        \varphi\in L^2(\mu_X)
+    \right\}
+    \subset L^2(\mu)
+\]
+denote the subspace of observables that depend only on the coarse state.
+We define
+\begin{equation}
+    PF=\E_\mu[F\mid \sigma(\xi)],
+    \qquad
+    Q=I-P.
+    \label{eq:PQ}
+\end{equation}
+Thus $P$ is the orthogonal projection from $L^2(\mu)$ onto
+$\mathcal H_X$, while $Q$ extracts the component that cannot be represented
+as a function of the current coarse state alone.
+
+A probability kernel also induces an operator on coarse observables.  For
+$\varphi\in L^2(\mu_X)$, we write
+\[
+    (K_{m\Delta}\varphi)(x)
+    =
+    \int_{\cX}
+    \varphi(x')\,K_{m\Delta}(x,dx')
+    =
+    \E_\mu[
+        \varphi(X_{n+m})
+        \mid X_n=x
+    ].
+\]
+In what follows, we use the same notation $K_{m\Delta}$ for the probability
+kernel and for this induced conditional-expectation operator.  The signed
+kernel $D_m$ is interpreted in the same way.
+
+\subsection{Why one-step composition fails}
+
+The two-step case already reveals the mechanism behind the composition
+defect.
+
+\begin{proposition}[Two-step unresolved-feedback identity]
+\label{thm:puqup}
+Under the identification of a coarse observable
+$\varphi\in L^2(\mu_X)$ with its lift
+$\varphi\circ\xi\in\mathcal H_X$, the stationary conditional operators
+satisfy
+\begin{equation}
+    K_{m\Delta}=P U_\Delta^mP,
+    \qquad
+    m\ge1,
+    \label{eq:projected_ops}
+\end{equation}
+on the resolved subspace. Consequently,
+\begin{equation}
+\boxed{
+    D_2
+    =K_{2\Delta}-K_\Delta^2
+    =P U_\Delta Q U_\Delta P.
+}
+    \label{eq:puqup}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Let $\varphi\in L^2(\mu_X)$ and let
+$\bar\varphi=\varphi\circ\xi$ denote its lift to the full state space.
+Since $\bar\varphi$ is $\sigma(\xi)$-measurable,
+$P\bar\varphi=\bar\varphi$. By stationarity, $Z_n\sim\mu$, so the
+definition of $P$ and the deterministic evolution give, for every $m\ge1$,
+\begin{align*}
+    (P U_\Delta^mP\bar\varphi)(Z_n)
+    &=
+    \E_\mu[
+        \bar\varphi(Z_{n+m})
+        \mid X_n
+    ]\\
+    &=
+    \E_\mu[
+        \varphi(X_{n+m})
+        \mid X_n
+    ]\\
+    &=
+    (K_{m\Delta}\varphi)(X_n)
+    \qquad\text{a.s.}
+\end{align*}
+This proves \eqref{eq:projected_ops} on the resolved subspace.
+Using $P^2=P$ and $Q=I-P$, the two-step difference is
+\begin{align*}
+    D_2
+    &=
+    P U_\Delta^2P-P U_\Delta P U_\Delta P\\
+    &=
+    P U_\Delta(I-P)U_\Delta P
+    =
+    P U_\Delta Q U_\Delta P.
+\end{align*}
+\end{proof}
+
+The identity in \eqref{eq:puqup} isolates the information lost by recursive
+one-step closure. After one full propagation, $Q U_\Delta P$ extracts the
+component of the evolved resolved observable that lies outside
+$\mathcal H_X$. The full dynamics retains this component, and
+$P U_\Delta Q U_\Delta P$ describes its subsequent contribution to
+resolved observables.
+
+Recursive use of $K_\Delta$, by contrast, inserts the projection $P$ after
+each sampling interval and therefore discards this intermediate unresolved
+component. Thus the two-step composition defect vanishes exactly when
+\[
+    P U_\Delta Q U_\Delta P=0.
+\]
+A nonzero value indicates unresolved information that survives one sampling interval and subsequently feeds back into the coarse dynamics. This feedback is the first projected memory term in the discrete-time Mori--Zwanzig expansion~\cite{zwanzig1961,mori1965,chorin2000,chorin2002}. The same projection mechanism also connects Mori--Zwanzig memory to irreducible prediction error~\cite{lozanoduran2026ladder}.
+
+\subsection{Accumulation over multiple steps}
+
+The same mechanism persists at longer lags.  Using $I=P+Q$ before the final
+one-step propagation gives
+\begin{align}
+    K_{(m+1)\Delta}
+    &=
+    P U_\Delta^{m}(P+Q)U_\Delta P \nonumber\\
+    &=
+    K_{m\Delta}K_\Delta
+    +
+    P U_\Delta^{m}Q U_\Delta P.
+    \label{eq:mstep_projection_recursion}
+\end{align}
+Subtracting $K_\Delta^{m+1}$ yields the recursion
+\begin{equation}
+    D_{m+1}
+    =
+    D_m K_\Delta
+    +
+    P U_\Delta^{m}Q U_\Delta P,
+    \qquad m\ge1.
+    \label{eq:defect_recursion}
+\end{equation}
+Since $D_1=0$, repeated application gives
+\begin{equation}
+    D_m
+    =
+    \sum_{j=1}^{m-1}
+    P U_\Delta^{m-j}Q U_\Delta P
+    K_\Delta^{j-1},
+    \qquad m\ge2.
+    \label{eq:defect_expansion}
+\end{equation}
+
+The expansion expresses the multi-step defect as the accumulated feedback
+of unresolved components. This defect can persist even when the one-step
+conditional law is known exactly.
+
+\section{Learning the one-step conditional law}
+\label{sec:learning}
+
+Let $\widehat K_\Delta$ be a learned Markov kernel on $\cX$ approximating
+$K_\Delta$. It may be represented by a Gaussian conditional model, a
+mixture model, a normalizing flow, a diffusion model, or a conditional
+flow-matching model. Each representation targets the same one-step
+conditional law \eqref{eq:conditional_law}, learned from coarse-state
+pairs with joint distribution $\mu_X(dx)K_\Delta(x,dx')$.
+
+\begin{remark}[Sampling the conditional law]
+If $\Phi_\Delta$ is ergodic with respect to $\mu$, time averages of
+integrable functions of $(X_n,X_{n+1})$ along a $\mu$-typical trajectory
+converge to their stationary expectations. A single long trajectory can
+therefore supply training pairs. For a nonergodic $\mu$, an ensemble of
+short trajectories (bursts) can instead be initialized with fine states
+sampled from $\mu$, including its weights across invariant components.
+When an initial ensemble relaxes toward the target stationary law, a
+burn-in period can be used before collecting pairs.
+\end{remark}
+
+Using fresh conditional draws, the learned model generates the rollout
+\begin{equation}
+    \widehat X_{n+1}\sim\widehat K_\Delta(\widehat X_n,\cdot).
+    \label{eq:learned_recursive}
+\end{equation}
+
+\subsection{Separation of composition and learning errors}
+
+At lag $m\ge2$, the discrepancy
+between the true coarse dynamics and the learned recursive model can be
+separated by adding and subtracting the exact recursive composition
+$K_\Delta^m$:
+\begin{equation}
+\boxed{
+    K_{m\Delta}-\widehat K_\Delta^m
+    =
+    \underbrace{K_{m\Delta}-K_\Delta^m}_{D_m}
+    +
+    \underbrace{K_\Delta^m-\widehat K_\Delta^m}_{
+        \text{propagated one-step learning error}
+    }.
+}
+    \label{eq:error_decomp}
+\end{equation}
+The first term is the composition defect introduced in
+Section~\ref{sec:multistep}. The second term is caused by replacing
+$K_\Delta$ with its learned approximation and therefore vanishes when
+$\widehat K_\Delta=K_\Delta$.
+
+To describe how the one-step approximation error propagates, let
+$K_\Delta$ and $\widehat K_\Delta$ act as bounded linear operators on a
+Banach space $\mathcal B$ of coarse observables. Replacing one factor at a
+time gives the telescoping identity
+\begin{equation}
+    K_\Delta^m-\widehat K_\Delta^m
+    =
+    \sum_{j=0}^{m-1}
+    K_\Delta^{m-1-j}
+    (K_\Delta-\widehat K_\Delta)
+    \widehat K_\Delta^j .
+    \label{eq:telescoping}
+\end{equation}
+No commutativity between $K_\Delta$ and $\widehat K_\Delta$ is required.
+
+Taking the operator norm induced by $\mathcal B$ and using submultiplicativity,
+\[
+    \norm{K_\Delta^m-\widehat K_\Delta^m}
+    \le
+    \norm{K_\Delta-\widehat K_\Delta}
+    \sum_{j=0}^{m-1}
+    \norm{K_\Delta}^{m-1-j}
+    \norm{\widehat K_\Delta}^{j}.
+\]
+In particular, if both operators are contractions on $\mathcal B$,
+\[
+    \norm{K_\Delta}\le1,
+    \qquad
+    \norm{\widehat K_\Delta}\le1,
+\]
+then
+\begin{equation}
+    \norm{K_\Delta^m-\widehat K_\Delta^m}
+    \le
+    m\,\norm{K_\Delta-\widehat K_\Delta}.
+    \label{eq:linear_growth_bound}
+\end{equation}
+For example, every probability kernel is a contraction on bounded
+observables equipped with the supremum norm, since
+\[
+    \norm{Kf}_\infty
+    =
+    \sup_x
+    \left|
+        \int f(x')\,K(x,dx')
+    \right|
+    \le
+    \norm{f}_\infty.
+\]
+
+Under the contraction assumption, \eqref{eq:linear_growth_bound} bounds
+the propagated learning error by the one-step error multiplied by the
+rollout length. Even a perfect one-step approximation leaves the
+composition defect $D_m$, which arises from information discarded by
+conditioning only on the present coarse state.
+
+\subsection{State temporal statistics of the learned rollout}
+
+We now extend the state-level comparison of Section~4.2 from the exact
+recursive closure to the learned model. Assume $\cX\subseteq\mathbb R^d$
+and that the required second moments are finite. Let $\widehat\mu$ be an
+invariant probability measure of the learned kernel $\widehat K_\Delta$.
+
+Denote by $\iota(x)=x$ the identity observable on $\cX$. The stationary
+lag-$m$ second-moment matrix of the true coarse process is
+\[
+    M^{\rm true}(m)
+    =
+    \int_{\cX}
+    x\,
+    (K_{m\Delta}\iota)(x)^\top
+    \,\mu_X(dx).
+\]
+For the exact recursive closure,
+\[
+    M^{\rm rec}(m)
+    =
+    \int_{\cX}
+    x\,
+    (K_\Delta^m\iota)(x)^\top
+    \,\mu_X(dx).
+\]
+To separate finite-time learning error from stationary-measure error, we
+also introduce the learned $m$-step dynamics evaluated under the true
+stationary measure,
+\[
+    M^{\widehat K,\mu_X}(m)
+    =
+    \int_{\cX}
+    x\,
+    (\widehat K_\Delta^m\iota)(x)^\top
+    \,\mu_X(dx).
+\]
+Finally, the stationary lag-$m$ second moment of the learned rollout is
+\[
+    M^{\rm learned}(m)
+    =
+    \int_{\cX}
+    x\,
+    (\widehat K_\Delta^m\iota)(x)^\top
+    \,\widehat\mu(dx).
+\]
+
+Adding and subtracting the two intermediate quantities gives
+\begin{align}
+    M^{\rm true}(m)-M^{\rm learned}(m)
+    &=
+    \underbrace{
+        \bigl[
+        M^{\rm true}(m)-M^{\rm rec}(m)
+        \bigr]
+    }_{\text{composition error}}
+    \nonumber\\
+    &\quad+
+    \underbrace{
+        \bigl[
+        M^{\rm rec}(m)-M^{\widehat K,\mu_X}(m)
+        \bigr]
+    }_{\text{propagated one-step learning error}}
+    \nonumber\\
+    &\quad+
+    \underbrace{
+        \bigl[
+        M^{\widehat K,\mu_X}(m)-M^{\rm learned}(m)
+        \bigr]
+    }_{\text{invariant-measure shift}}.
+    \label{eq:three_error}
+\end{align}
+
+The first term is precisely the temporal error studied in Section~4.2.
+Using $D_m=K_{m\Delta}-K_\Delta^m$,
+\[
+    M^{\rm true}(m)-M^{\rm rec}(m)
+    =
+    \int_{\cX}
+    x\,
+    (D_m\iota)(x)^\top
+    \,\mu_X(dx).
+\]
+Because the true process and the exact recursive closure have the same
+stationary measure $\mu_X$, they also have the same mean. This term
+therefore equals $C^{\rm true}(m)-C^{\rm rec}(m)$, as in
+\eqref{eq:corr_identity}.
+
+The second term keeps the stationary measure fixed and changes only the
+transition law:
+\[
+    M^{\rm rec}(m)-M^{\widehat K,\mu_X}(m)
+    =
+    \int_{\cX}
+    x\,
+    \bigl[
+        (K_\Delta^m-\widehat K_\Delta^m)\iota
+    \bigr](x)^\top
+    \,\mu_X(dx).
+\]
+The telescoping identity \eqref{eq:telescoping} applies componentwise
+whenever the coordinate functions belong to the common operator space
+$\mathcal B$. It describes how the one-step approximation error
+propagates over $m$ steps.
+
+The third term keeps the learned dynamics fixed and changes only the
+measure with respect to which the lagged statistic is averaged:
+\[
+    M^{\widehat K,\mu_X}(m)-M^{\rm learned}(m)
+    =
+    \int_{\cX}
+    x\,
+    (\widehat K_\Delta^m\iota)(x)^\top
+    \,(\mu_X-\widehat\mu)(dx).
+\]
+It therefore reflects the stationary bias of the learned recursive model.
+
+To pass from second moments to autocovariances, recall the true stationary
+mean $\bar x$ and define the learned stationary mean
+\[
+    \widehat x
+    =
+    \int_{\cX}x\,\widehat\mu(dx).
+\]
+Then
+\[
+    C^{\rm true}(m)
+    =
+    M^{\rm true}(m)-\bar x\bar x^\top,
+    \qquad
+    C^{\rm learned}(m)
+    =
+    M^{\rm learned}(m)-\widehat x\,\widehat x^\top,
+\]
+and hence
+\begin{equation}
+\begin{aligned}
+    C^{\rm true}(m)-C^{\rm learned}(m)
+    &=
+    M^{\rm true}(m)-M^{\rm learned}(m)\\
+    &\quad+
+    \widehat x\,\widehat x^\top
+    -
+    \bar x\bar x^\top.
+\end{aligned}
+    \label{eq:learned_covariance_error}
+\end{equation}
+
+Thus the autocovariance error consists of the three second-moment
+contributions in \eqref{eq:three_error}, together with a correction for
+the change in stationary mean. This correction is another consequence of
+the invariant-measure shift. Section~\ref{sec:stability} bounds the
+Wasserstein distance between the true and learned invariant measures under
+an additional mixing assumption.
+
+\section{A priori control of the learned invariant measure}
+\label{sec:stability}
+
+We now bound the distance between the true coarse invariant measure $\mu_X$ and an invariant measure $\widehat\mu$ of the learned kernel. The argument uses Wasserstein perturbation estimates \cite{rudolfschweizer2018,armegioiu2026memory} under an additional finite-step contraction assumption. This analysis complements approaches
+such as DySLIM~\cite{schiff2024dyslim}, which regularize invariant statistics during training.
+
+\subsection{Statistical mixing of the exact recursive dynamics}
+
+Throughout this section, let $(\cX,d)$ be a Polish metric space with the
+Borel $\sigma$-algebra used above. Write $\mathcal P_1(\cX)$ for the
+probability measures with finite first moment, and assume
+$\mu_X\in\mathcal P_1(\cX)$. The fixed versions of $K_\Delta$ and
+$\widehat K_\Delta$ are defined on all of $\cX$ and are assumed to map
+$\mathcal P_1(\cX)$ into itself.
+
+Assume that there exist an integer $r\ge1$ and a constant $0\le\rho<1$
+such that
+\begin{equation}
+    \Wone(\nu K_\Delta^r,\eta K_\Delta^r)
+    \le
+    \rho\,\Wone(\nu,\eta)
+    \qquad
+    \nu,\eta\in\mathcal P_1(\cX).
+    \label{eq:w_contract}
+\end{equation}
+The time $r\Delta$ is a statistical mixing horizon over which the exact
+recursive dynamics reduces Wasserstein distances between probability
+distributions.
+
+To track how one-step errors propagate before this horizon, define
+\begin{equation}
+    \alpha_j
+    :=
+    \sup_{\substack{\nu,\eta\in\mathcal P_1(\cX)\\\nu\ne\eta}}
+    \frac{
+        \Wone(\nu K_\Delta^j,\eta K_\Delta^j)
+    }{
+        \Wone(\nu,\eta)
+    },
+    \qquad
+    \alpha_0=1.
+    \label{eq:w_amplification}
+\end{equation}
+Assume $\alpha_j<\infty$ for $1\le j<r$.
+Condition~\eqref{eq:w_contract} gives $\alpha_r\le\rho<1$.
+The intermediate coefficients may exceed one, representing transient
+amplification of statistical perturbations.
+
+Because $\mu_XK_\Delta^r=\mu_X$, condition~\eqref{eq:w_contract} implies
+\[
+    \Wone(\nu K_\Delta^{qr},\mu_X)
+    \le
+    \rho^q\Wone(\nu,\mu_X),
+    \qquad q\ge0.
+\]
+It also implies uniqueness of the invariant measure in
+$\mathcal P_1(\cX)$. Indeed, if $\nu\in\mathcal P_1(\cX)$ satisfies
+$\nu K_\Delta=\nu$, then
+\[
+    \Wone(\nu,\mu_X)
+    =
+    \Wone(\nu K_\Delta^r,\mu_XK_\Delta^r)
+    \le
+    \rho\,\Wone(\nu,\mu_X),
+\]
+and therefore $\nu=\mu_X$.
+
+\subsection{Propagation of the one-step learning error}
+
+Assume that the learned conditional law has finite uniform one-step
+Wasserstein error,
+\begin{equation}
+    \varepsilon_1
+    :=
+    \sup_{x\in\cX}
+    \Wone\!\left(
+        K_\Delta(x,\cdot),
+        \widehat K_\Delta(x,\cdot)
+    \right)<\infty.
+    \label{eq:w_one_step_error}
+\end{equation}
+We now ask how this local discrepancy propagates over the mixing horizon.
+
+The argument uses the same telescoping algebra as in Section~6.1, but the
+estimate is specific to the Wasserstein metric. By the
+Kantorovich--Rubinstein duality, for every Lipschitz function $h$,
+\[
+    \left\|
+        (K_\Delta-\widehat K_\Delta)h
+    \right\|_\infty
+    \le
+    \varepsilon_1\,\operatorname{Lip}(h).
+\]
+Moreover, the definition of $\alpha_j$ implies
+\[
+    \operatorname{Lip}(K_\Delta^j h)
+    \le
+    \alpha_j\,\operatorname{Lip}(h).
+\]
+
+Using the telescoping identity in the form
+\[
+    K_\Delta^r-\widehat K_\Delta^r
+    =
+    \sum_{j=0}^{r-1}
+    \widehat K_\Delta^{\,r-1-j}
+    (K_\Delta-\widehat K_\Delta)
+    K_\Delta^j,
+\]
+and the fact that every probability kernel is a contraction in the
+supremum norm, we obtain, for $\operatorname{Lip}(h)\le1$,
+\begin{align*}
+    \left\|
+        (K_\Delta^r-\widehat K_\Delta^r)h
+    \right\|_\infty
+    &\le
+    \sum_{j=0}^{r-1}
+    \left\|
+        (K_\Delta-\widehat K_\Delta)
+        K_\Delta^j h
+    \right\|_\infty \\
+    &\le
+    \varepsilon_1
+    \sum_{j=0}^{r-1}
+    \operatorname{Lip}(K_\Delta^j h) \\
+    &\le
+    \varepsilon_1
+    \sum_{j=0}^{r-1}\alpha_j .
+\end{align*}
+Applying the Kantorovich--Rubinstein duality once more gives
+\begin{equation}
+    \varepsilon_r
+    :=
+    \sup_{x\in\cX}
+    \Wone\!\left(
+        K_\Delta^r(x,\cdot),
+        \widehat K_\Delta^r(x,\cdot)
+    \right)
+    \le
+    \varepsilon_1
+    \sum_{j=0}^{r-1}\alpha_j .
+    \label{eq:w_kernel_error}
+\end{equation}
+
+The sum in \eqref{eq:w_kernel_error} accounts for the different amounts
+of amplification or damping experienced by one-step errors as they
+propagate to the mixing horizon.
+
+\subsection{Stability of the learned invariant measure}
+
+We can now relate the finite-time modeling error to the long-time stationary
+bias.
+
+\begin{proposition}[Statistical stability of the learned invariant measure]
+\label{prop:wasserstein}
+Under the assumptions of this section, suppose that $\widehat K_\Delta$
+admits an invariant probability measure
+$\widehat\mu\in\mathcal P_1(\cX)$. Then
+\begin{equation}
+\boxed{
+    \Wone(\mu_X,\widehat\mu)
+    \le
+    \frac{\varepsilon_r}{1-\rho}.
+}
+    \label{eq:w_measure_bound}
+\end{equation}
+Consequently,
+\begin{equation}
+\boxed{
+    \Wone(\mu_X,\widehat\mu)
+    \le
+    \frac{\varepsilon_1}{1-\rho}
+    \sum_{j=0}^{r-1}\alpha_j .
+}
+    \label{eq:w_measure_bound_onestep}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Since $\mu_X$ and $\widehat\mu$ are invariant for $K_\Delta$ and
+$\widehat K_\Delta$, respectively,
+\[
+    \mu_XK_\Delta^r=\mu_X,
+    \qquad
+    \widehat\mu\,\widehat K_\Delta^r=\widehat\mu.
+\]
+Therefore,
+\begin{align*}
+    \Wone(\mu_X,\widehat\mu)
+    &=
+    \Wone(
+        \mu_XK_\Delta^r,
+        \widehat\mu\,\widehat K_\Delta^r
+    ) \\
+    &\le
+    \Wone(
+        \mu_XK_\Delta^r,
+        \widehat\mu K_\Delta^r
+    )
+    +
+    \Wone(
+        \widehat\mu K_\Delta^r,
+        \widehat\mu\,\widehat K_\Delta^r
+    ).
+\end{align*}
+The first term is bounded by
+\[
+    \rho\,\Wone(\mu_X,\widehat\mu)
+\]
+from \eqref{eq:w_contract}. For the second term,
+\begin{align*}
+    \Wone(
+        \widehat\mu K_\Delta^r,
+        \widehat\mu\,\widehat K_\Delta^r
+    )
+    &\le
+    \int_{\cX}
+    \Wone\!\left(
+        K_\Delta^r(x,\cdot),
+        \widehat K_\Delta^r(x,\cdot)
+    \right)
+    \widehat\mu(dx) \\
+    &\le
+    \varepsilon_r.
+\end{align*}
+Hence
+\[
+    \Wone(\mu_X,\widehat\mu)
+    \le
+    \rho\,\Wone(\mu_X,\widehat\mu)
+    +
+    \varepsilon_r,
+\]
+which yields \eqref{eq:w_measure_bound}. Combining this result with
+\eqref{eq:w_kernel_error} gives
+\eqref{eq:w_measure_bound_onestep}.
+\end{proof}
+
+The bound separates three dynamical ingredients:
+\[
+    \underbrace{\varepsilon_1}_{\text{one-step learning accuracy}},
+    \qquad
+    \underbrace{\sum_{j=0}^{r-1}\alpha_j}_{
+        \text{transient error amplification}},
+    \qquad
+    \underbrace{\frac{1}{1-\rho}}_{
+        \text{long-time statistical sensitivity}}.
+\]
+The first measures the accuracy of the learned conditional law. The
+second describes how local modeling errors propagate over the mixing
+horizon. The third increases as statistical contraction weakens.
+Together, these factors show how the accuracy needed to control
+stationary bias depends on both one-step learning and the statistical
+dynamics of the exact recursive model.
+
+% \section{Implications for generative coarse-graining}
+% \label{sec:generative}
+
+% The conditional-law viewpoint makes generative modeling a natural representation of unresolved uncertainty.  Let $\eta\sim\nu$ be a simple latent variable and define
+% \begin{equation}
+%     \widehat X_{n+1}=T_\theta(X_n,\eta_n),
+%     \qquad
+%     \widehat K_\Delta(x,\cdot)
+%     =T_\theta(x,\cdot)_\#\nu.
+%     \label{eq:generative_representation}
+% \end{equation}
+% The role of a conditional flow-matching/moment-matching model is to learn a sufficiently flexible transport $T_\theta$ so that
+% \begin{equation}
+%     \widehat K_\Delta(x,\cdot)
+%     \approx K_\Delta(x,\cdot).
+%     \label{eq:target_approximation}
+% \end{equation}
+% This is conceptually different from inserting artificial noise into an otherwise deterministic coarse map.  The latent variable parameterizes the unresolved ensemble already present in the projected deterministic dynamics.
+
+% A unimodal Gaussian model restricts $\widehat K_\Delta(x,\cdot)$ to a family determined by conditional first and second moments.  A flexible generative model can represent conditional skewness, heavy tails, non-elliptical geometry, nonlinear cross-component dependence, and multimodality when present.  Therefore a comparison between Gaussian and flow-based models is naturally interpreted as a comparison of how well two model classes approximate the same stationary one-step conditional law.
+
+% The theory above also fixes what such a comparison can and cannot establish.  Better approximation of $K_\Delta$ can improve invariant statistics, adjacent-time pair statistics, and the propagated conditional-law term in \eqref{eq:error_decomp}.  It cannot, by itself, reconstruct the historical information represented by $D_m$.  A residual discrepancy in long-lag autocorrelations is therefore compatible with an excellent one-step conditional model.
+
+% \subsection{Diagnostics suggested by the framework}
+
+% The framework suggests a hierarchy of diagnostics that does not require explicit high-dimensional density estimation of $K_\Delta$.
+
+% First, one can compare the empirical pair law
+% \begin{equation}
+%     \Gamma_\Delta=\Law(X_n,X_{n+1})
+%     \label{eq:pair_diag}
+% \end{equation}
+% with the pair law generated by $X_n\sim\mu_X$ followed by one conditional model step.  This directly assesses the one-step target through joint samples rather than through pointwise density estimation.
+
+% Second, one can quantify memory visible in two-time propagation by applying $D_m$ to selected observables $\phi_1,\ldots,\phi_r$ and defining
+% \begin{equation}
+%     \mathcal M_m
+%     =\sum_{j=1}^r
+%     \norm{K_{m\Delta}\phi_j-K_\Delta^m\phi_j}_{L^2(\mu_X)}^2.
+%     \label{eq:memory_index}
+% \end{equation}
+% The observables may be individual components, energies, low Fourier modes, or physically meaningful resolved quantities in a PDE.
+
+% Third, Proposition~\ref{prop:projection_predictor} suggests a complementary history diagnostic.  For a chosen observable $g$, define
+% \begin{equation}
+%     \mathcal H(g)
+%     =\E\!\left|
+%       R_\Delta g-(K_\Delta g)(X_n)
+%     \right|^2.
+%     \label{eq:history_gap}
+% \end{equation}
+% This quantity measures predictive information contained in the observed past beyond the current coarse state.  Unlike $D_m$, which detects memory through two-time composition, $\mathcal H(g)$ probes the immediate difference between full-history and present-state prediction.
+
+% \begin{table}[t]
+% \centering
+% \caption{What the exact one-step conditional law guarantees when recursively reused.  The statements assume stationary initialization unless additional ergodicity of the recursive closure is imposed.}
+% \label{tab:capability}
+% \begin{tabular}{>{\raggedright\arraybackslash}p{0.58\linewidth} >{\raggedright\arraybackslash}p{0.30\linewidth}}
+% \toprule
+% Quantity & Exact recursive closure \\
+% \midrule
+% Stationary coarse marginal $\mu_X$ & Preserved exactly \\
+% Distribution of any instantaneous observable $\varphi(X)$ & Preserved exactly \\
+% Adjacent-time pair law $\Law(X_n,X_{n+1})$ & Preserved exactly \\
+% Lag-one correlation & Preserved exactly \\
+% Lag-$m$ two-time law, $m\ge2$ & Not guaranteed; controlled by $D_m$ \\
+% Long-lag autocorrelation and power spectrum & Not guaranteed \\
+% Multi-time joint distributions & Not guaranteed \\
+% Residence, exit, and first-passage statistics & Not guaranteed \\
+% Full path-space law & Not guaranteed \\
+% Convergence from arbitrary initial conditions & Requires stability/ergodicity of recursive closure \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+One-step conditional accuracy and temporal statistical fidelity are distinct requirements for a coarse model. Agreement with stationary distributions and adjacent-time statistics can coexist with errors at
+longer lags. Conversely, persistent errors in temporal correlations need not indicate inadequate learning of the one-step law. Evaluating these properties separately helps distinguish deficiencies in conditional-law approximation from information lost through recursive closure.
+
+This distinction guides the development of conditional generative models for coarse dynamics. With the observation and one-step learning target fixed, increasing model expressivity alone cannot remove a nonzero composition defect. Improving temporal fidelity then calls for reconsidering the conditioning information or the recursive modeling objective. Models can retain information across steps by conditioning on observed history or by updating an internal state that carries information from previous steps.
+
+\newpage
+\begin{thebibliography}{99}
+
+\bibitem{changpollard1997}
+{\sc J.~T. Chang and D.~Pollard},
+{\em Conditioning as disintegration},
+Statist. Neerlandica, 51 (1997), pp.~287--317,
+\url{https://doi.org/10.1111/1467-9574.00056}.
+
+\bibitem{chorin2000}
+{\sc A.~J. Chorin, O.~H. Hald, and R.~Kupferman},
+{\em Optimal prediction and the Mori--Zwanzig representation of irreversible processes},
+Proc. Natl. Acad. Sci. USA, 97 (2000), pp.~2968--2973,
+\url{https://doi.org/10.1073/pnas.97.7.2968}.
+
+\bibitem{chorin2002}
+{\sc A.~J. Chorin, O.~H. Hald, and R.~Kupferman},
+{\em Optimal prediction with memory},
+Physica D, 166 (2002), pp.~239--257,
+\url{https://doi.org/10.1016/S0167-2789(02)00446-3}.
+
+\bibitem{gray2011}
+{\sc R.~M. Gray},
+{\em Entropy and Information Theory}, 2nd ed.,
+Springer, New York, 2011,
+\url{https://doi.org/10.1007/978-1-4419-7970-4}.
+
+\bibitem{hudsonli2020}
+{\sc T.~Hudson and X.~H. Li},
+{\em Coarse-graining of overdamped Langevin dynamics via the Mori--Zwanzig formalism},
+Multiscale Model. Simul., 18 (2020), pp.~1113--1135,
+\url{https://doi.org/10.1137/18M1222533}.
+
+\bibitem{hudsonli2024}
+{\sc T.~Hudson and X.~H. Li},
+{\em Dynamical properties of coarse-grained linear SDEs},
+Multiscale Model. Simul., 22 (2024), pp.~406--435,
+\url{https://doi.org/10.1137/23M1549249}.
+
+\bibitem{kallenberg2021}
+{\sc O.~Kallenberg},
+{\em Foundations of Modern Probability}, 3rd ed.,
+Springer, Cham, 2021,
+\url{https://doi.org/10.1007/978-3-030-61871-1}.
+
+\bibitem{lozanoduran2026ladder}
+{\sc A.~Lozano-Dur\'an},
+{\em Ladder of information limits on prediction for reduced-order models},
+arXiv:2609.19424, 2026,
+\url{https://arxiv.org/abs/2609.19424}.
+
+\bibitem{mori1965}
+{\sc H.~Mori},
+{\em Transport, collective motion, and Brownian motion},
+Prog. Theor. Phys., 33 (1965), pp.~423--455,
+\url{https://doi.org/10.1143/PTP.33.423}.
+
+\bibitem{rudolfschweizer2018}
+{\sc D.~Rudolf and N.~Schweizer},
+{\em Perturbation theory for Markov chains via Wasserstein distance},
+Bernoulli, 24 (2018), pp.~2610--2639,
+\url{https://doi.org/10.3150/17-BEJ938}.
+
+\bibitem{zwanzig1961}
+{\sc R.~Zwanzig},
+{\em Memory effects in irreversible thermodynamics},
+Phys. Rev., 124 (1961), pp.~983--992,
+\url{https://doi.org/10.1103/PhysRev.124.983}.
+
+\bibitem{armegioiu2026memory}
+{\sc V.~Armegioiu},
+{\em Memory-conditioned flow-matching for stable autoregressive PDE rollouts},
+arXiv:2602.06689, 2026,
+\url{https://arxiv.org/abs/2602.06689}.
+
+\bibitem{schiff2024dyslim}
+{\sc Y.~Schiff, Z.~Y.~Wan, J.~B.~Parker, S.~Hoyer, V.~Kuleshov, F.~Sha, and L.~Zepeda-N\'u\~nez},
+{\em DySLIM: Dynamics stable learning by invariant measure for chaotic systems},
+in Proceedings of the 41st International Conference on Machine Learning,
+PMLR, 235 (2024), pp.~43649--43684,
+\url{https://proceedings.mlr.press/v235/schiff24b.html}.
+
+\bibitem{fu2020memory}
+{\sc X.~Fu, L.-B.~Chang, and D.~Xiu},
+{\em Learning reduced systems via deep neural networks with memory},
+J. Mach. Learn. Model. Comput., 1 (2020), pp.~97--118,
+\url{https://doi.org/10.1615/.2020034232}.
+
+\bibitem{linlu2021}
+{\sc K.~K. Lin and F.~Lu},
+{\em Data-driven model reduction, Wiener projections, and the Koopman--Mori--Zwanzig formalism},
+J. Comput. Phys., 424 (2021), 109864,
+\url{https://doi.org/10.1016/j.jcp.2020.109864}.
+
+\bibitem{yanghe2026memory}
+{\sc M.~Yang and S.~He},
+{\em Memory-conditioned diffusion model for generalized Langevin dynamics},
+arXiv:2609.28371, 2026,
+\url{https://arxiv.org/abs/2609.28371}.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+Thumbs.db
+outputs/
+.env
+.env.*
+*.log
+
+# Keep archived figures when parent rules ignore Figures/ or PDFs.
+!/results/figures/
+!/results/figures/*

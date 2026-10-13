@@ -1,0 +1,234 @@
+{
+  "points": 2000000,
+  "pairs": 1999999,
+  "reference_points": 2000000,
+  "reference_pairs": 1999999,
+  "histogram_metrics": [
+    {
+      "bins": 120,
+      "model": "K1500",
+      "reference_pairs": 1999999,
+      "model_pairs": 1999999,
+      "TV": 0.08610454305227153,
+      "Jensen_Shannon_divergence_nats": 0.011373387963617454,
+      "Hellinger_distance": 0.11002904747104914,
+      "cell_probability_RMSE": 7.006073762898047e-05
+    },
+    {
+      "bins": 240,
+      "model": "K1500",
+      "reference_pairs": 1999999,
+      "model_pairs": 1999999,
+      "TV": 0.1707860853930427,
+      "Jensen_Shannon_divergence_nats": 0.029309121583131714,
+      "Hellinger_distance": 0.17864064733924,
+      "cell_probability_RMSE": 4.164760489155547e-05
+    },
+    {
+      "bins": 480,
+      "model": "K1500",
+      "reference_pairs": 1999999,
+      "model_pairs": 1999999,
+      "TV": 0.25010112505056253,
+      "Jensen_Shannon_divergence_nats": 0.05571379356244679,
+      "Hellinger_distance": 0.24719369961890392,
+      "cell_probability_RMSE": 2.0191087242495604e-05
+    }
+  ],
+  "unbinned_metrics": {
+    "state_W1": 0.057892684368611606,
+    "increment_W1": 0.020645765177076267,
+    "sliced_W1_24_directions": 0.052633547640662824,
+    "projection_W1": [
+      {
+        "angle_degrees": 0.0,
+        "W1": 0.057892504861155276
+      },
+      {
+        "angle_degrees": 7.5,
+        "W1": 0.06496908379304887
+      },
+      {
+        "angle_degrees": 15.0,
+        "W1": 0.07092839981561674
+      },
+      {
+        "angle_degrees": 22.5,
+        "W1": 0.07567137610619014
+      },
+      {
+        "angle_degrees": 30.0,
+        "W1": 0.0791161026781743
+      },
+      {
+        "angle_degrees": 37.5,
+        "W1": 0.0812060407606048
+      },
+      {
+        "angle_degrees": 45.0,
+        "W1": 0.08190702549522078
+      },
+      {
+        "angle_degrees": 52.5,
+        "W1": 0.08120722963754978
+      },
+      {
+        "angle_degrees": 60.0,
+        "W1": 0.07911962866196999
+      },
+      {
+        "angle_degrees": 67.5,
+        "W1": 0.07567833006431172
+      },
+      {
+        "angle_degrees": 75.0,
+        "W1": 0.07093843123289936
+      },
+      {
+        "angle_degrees": 82.5,
+        "W1": 0.06498156127304669
+      },
+      {
+        "angle_degrees": 90.0,
+        "W1": 0.057900865761888014
+      },
+      {
+        "angle_degrees": 97.5,
+        "W1": 0.04981357375998194
+      },
+      {
+        "angle_degrees": 105.0,
+        "W1": 0.040867497515233886
+      },
+      {
+        "angle_degrees": 112.5,
+        "W1": 0.031195828516950914
+      },
+      {
+        "angle_degrees": 120.0,
+        "W1": 0.020896420819465925
+      },
+      {
+        "angle_degrees": 127.5,
+        "W1": 0.011134179074477618
+      },
+      {
+        "angle_degrees": 135.0,
+        "W1": 0.014598760559495784
+      },
+      {
+        "angle_degrees": 142.5,
+        "W1": 0.010509417166829781
+      },
+      {
+        "angle_degrees": 150.0,
+        "W1": 0.02085816952419986
+      },
+      {
+        "angle_degrees": 157.5,
+        "W1": 0.03116649320713381
+      },
+      {
+        "angle_degrees": 165.0,
+        "W1": 0.04084468873922828
+      },
+      {
+        "angle_degrees": 172.5,
+        "W1": 0.049803534351233615
+      }
+    ]
+  },
+  "moments": {
+    "data": {
+      "count": 2000000,
+      "mean": -0.061941588203492735,
+      "std_population": 7.9247970412369515,
+      "mass_positive": 0.496068
+    },
+    "K1500": {
+      "count": 2000000,
+      "mean": -0.015718305904654277,
+      "std_population": 7.880271110935385,
+      "mass_positive": 0.497238
+    }
+  },
+  "histogram_rule": {
+    "source_range": [
+      -19.945163629402323,
+      19.93621898176335
+    ],
+    "edge_range": [
+      -19.945163629402323,
+      19.93621898176335
+    ],
+    "padding_per_side": 0.0,
+    "padding_rule": "No padding; only a constant combined sequence uses 0.5 per side",
+    "bins": [
+      120,
+      240,
+      480
+    ],
+    "shared_coordinates": true,
+    "smoothing": false,
+    "orientation": "counts[current_state_bin, next_state_bin]",
+    "endpoint_rule": "Left-closed/right-open bins, except the last bin includes the right endpoint",
+    "normalization": "Each sequence's counts divided by its own number of adjacent pairs; probability mass, not density"
+  },
+  "definitions": {
+    "W1": "scipy.stats.wasserstein_distance: exact empirical one-dimensional CDF integration with uniform sample weights",
+    "sliced_W1_24_directions": "Arithmetic mean of empirical W1 on unit projections at j*pi/24, j=0,...,23; not full two-dimensional W1",
+    "TV": "0.5 * sum(abs(p-q))",
+    "Jensen_Shannon_divergence_nats": "0.5*(KL(p||m)+KL(q||m)), m=(p+q)/2; natural logarithms",
+    "Hellinger_distance": "sqrt(0.5 * sum((sqrt(p)-sqrt(q))**2))",
+    "cell_probability_RMSE": "sqrt(mean((p-q)**2))"
+  },
+  "interpretation": "Finite empirical comparison with the training reference. Serial dependence and one model trajectory do not justify iid confidence claims or establish equality of population laws.",
+  "protocol": {
+    "source": "autonomous_model_rollout",
+    "generated_in_this_run": true,
+    "checkpoint": "models/k1500_gh4000.pt",
+    "adam_updates": 1000,
+    "lbfgs_updates": 4000,
+    "seed": 2026101001,
+    "seed_distinct_from_marginal_rollouts": true,
+    "initial_index": 1276103,
+    "initial_state": 6.260278459735426,
+    "initial_state_source": "data/train_x.npy",
+    "initial_state_in_output": false,
+    "total_steps": 2100000,
+    "burn_steps": 100000,
+    "randomness": "NumPy default_rng(seed), then integers(len(train_x)), then standard_normal(total_steps)",
+    "device": "cpu",
+    "dtype": "float64",
+    "batch_size": 1,
+    "block_steps": 25000,
+    "teacher_forced": false,
+    "clipping": false,
+    "restarts": false,
+    "retained_steps": 2000000,
+    "reference": "data/train_x.npy",
+    "reference_states": 2000000,
+    "coordinates": "Original scalar state units",
+    "analysis_dtype": "float64",
+    "analysis_threads": 1,
+    "file_counts": {
+      "joint_rollout_2m.npy": {
+        "states": 2000000,
+        "adjacent_pairs": 1999999
+      },
+      "data/train_x.npy": {
+        "states": 2000000,
+        "adjacent_pairs": 1999999
+      }
+    }
+  },
+  "seed": 2026101001,
+  "burn": 100000,
+  "software": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "torch": "2.13.0+cu130"
+  },
+  "elapsed_seconds": 135.472646899987
+}

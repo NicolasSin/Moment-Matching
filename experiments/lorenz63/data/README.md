@@ -34,3 +34,7 @@ The present 2,000,000-point training array comes from the $(2,3,4)$ trajectory, 
 Different initial conditions do not establish statistical independence, and observations within each trajectory are serially dependent. The generator observes only $x$; it does not reconstruct the full three-dimensional Lorenz state. The scalar observation process is not assumed to be exactly Markov. Matching scalar marginals or adjacent-pair statistics therefore does not guarantee agreement of multistep dynamics.
 
 The supplied arrays define the numerical data reference. Changes in solver version or integration segmentation can change a freshly integrated chaotic trajectory. Data-source records are listed in [result_sources.json](../docs/result_sources.json).
+
+## Historical training monitoring
+
+`training_records.jsonl` contains the scientific monitoring observations through 1,000 Adam and 4,000 L-BFGS updates from the original training run. Its header records the historical source identifier. `scripts/export_training_records.py` exports `loss_history.csv` and `training_endpoint.json` from these bundled records; the original local archive is not a runtime dependency. Export is distinct from running a new optimization or recomputing historical audits.
